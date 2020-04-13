@@ -1,0 +1,63 @@
+FBP API
+
+APP: CLIENT
+
+CONTRACT:
+    connect(ISP)/makeContract()
+    disconnect(ISP)/cancelContract()
+
+    createChannel()
+    destroyChannel(Channel)
+    inviteToChannel(Channel, User)
+    joinChannel(Channel)
+    removeFromChannel(User)
+
+    E2E Additions:
+    -
+
+    Feed in Feed Additions:
+    embed(Feed)
+    exctract(Feed)
+
+REQUEST:
+    sendRequest()
+    answerRequest()
+    post(MSG, Channel)
+    makeAvailable(User)
+    makeAvailable(Channel)
+
+E2E ist schlussendlich connection zwischen C und S? Dort werden Posts verteilt
+Contract und Tunnel sind nur für aufrechterhaltung vo Connectivity oder wird dort durch
+Feeds in Feeds kommuniziert
+
+
+APP: ISP
+
+CONTRACT:
+    
+    add(User)
+    add(Channel)
+    remove(User)
+    remove(Channel)
+
+    E2E Additions:
+    -
+
+    Feed in Feed Additions:
+    embed(Feed)
+    exctract(Feed)
+    
+
+TUNNEL:
+
+    createTunnel(ISP)
+    destroyTunnel(ISP)
+    pullFeed(Tunnel)
+    postFeed(Tunnel)
+    
+    E2E Additions:
+    -
+
+    Feed in Feed Additions:
+    embed(Feed)
+    exctract(Feed)
