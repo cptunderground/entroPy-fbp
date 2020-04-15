@@ -25,9 +25,10 @@
 #### Protocol-Level:
 
     E2E:
-    tbt - could be UDP stream etc.
+    tbd - could be UDP stream etc.
     Feed in Feed:
-    -
+    passToContract(action)
+    
 
 ## Contract
 
@@ -51,6 +52,7 @@ Channel:
     write()
     
     E2E Additions:
+    -
 
     Feed in Feed Additions:
     embed(Feed)
@@ -72,6 +74,8 @@ Channel:
     add(Channel)
     remove(User)
     remove(Channel)
+    registerFollowMe(User)
+    registerForgetMe(User)
 
 #### Feed-Level:
     
@@ -80,6 +84,7 @@ Channel:
     write(Feed)
     on contract-Isp feed
 
+    E2E Addition:
     forwardToTunnel(Feed)
     in case same connection is used to transfer
 
@@ -107,11 +112,12 @@ Channel:
 
 
 #### Feed-Level:
-    E2E
+    
     read(Feed) 
     write(Feed)
     on tunnel-Isp feed
 
+    E2E Additions:
     passTroughTunnel(Feed)
     in case same connection is used to transfer
 
