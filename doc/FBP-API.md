@@ -2,15 +2,65 @@
 ## Client
 ## Request
 
-#### App-Level:
+#### App-RequestReply/PubSub:
 
+    //RPC Group
+    Server
+    announceService()
+    retireService()
+    readRequest()
+    sendResult()
+
+    Client
+    introduceMe()
+    detruceMe()
     sendRequest()
-    answerRequest()
-    post(MSG, Channel)
-    makeAvailable(User)
-    makeAvailable(Channel)
+    readResult() 
 
-    display()
+    //PubSub Group
+    P2P
+    createTopic()
+    destroyTopic() // ev
+    publish(topic, msg)
+    subscribe(topic)
+    unsubscribe(topic)
+    read(topic) -> newest msg, void
+
+    //Capsuling protocol, feeds, general impl. from app
+    
+    old
+    createChannel()
+    destroyChannel(Channel)
+    post(MSG, Channel)
+    inviteToChannel(Channel, User)
+    joinChannel(Channel)
+    removeFromChannel(User)
+    
+    Up API - display to User
+
+    Contract Client ISP
+    //RPC Group
+    ISP
+    announceService()
+    retireService()
+    readRequest()
+    sendResult()
+
+    Client
+    //introduceMe() -> unused already following
+    //detruceMe() -> unused business contract ended
+    sendRequest()
+    readResult()
+
+    Available ISP services
+    C:introduceMe(serviceID, boolean) -> true=introduce, flase=detruce
+    S:announce(serviceID, boolean) -> true=announce, flase=retire
+
+    TODO: S:getNextRPC/meetCustomers/collectCustomers(serviceID) -> clientID,boolean* (stream)
+
+    ==> Prototype-Pseudo Code: Client connects to a service via ONE ISP
+
+
 
 #### Feed-Level:
 
@@ -38,13 +88,6 @@ General:
     connect(ISP)/makeContract()
     disconnect(ISP)/cancelContract()
 
-Channel:
-
-    createChannel()
-    destroyChannel(Channel)
-    inviteToChannel(Channel, User)
-    joinChannel(Channel)
-    removeFromChannel(User)
 
 #### Feed-Level:
 
