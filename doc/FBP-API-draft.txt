@@ -2,7 +2,33 @@ FBP API
 
 APP: CLIENT
 
+REQUEST:
+    APP:
+    sendRequest()
+    answerRequest()
+    post(MSG, Channel)
+    makeAvailable(User)
+    makeAvailable(Channel)
+
+    display()
+
+    FEED:
+    write()
+    read()
+    
+    E2E Additions:
+    -
+    Feed in Feed:
+    -
+
+    PROTOCOL:
+    E2E:
+    tbt - could be UDP stream etc.
+    Feed in Feed:
+    - 
+
 CONTRACT:
+    APP:
     connect(ISP)/makeContract()
     disconnect(ISP)/cancelContract()
 
@@ -12,12 +38,19 @@ CONTRACT:
     joinChannel(Channel)
     removeFromChannel(User)
 
+    FEED:
     E2E Additions:
     -
 
     Feed in Feed Additions:
     embed(Feed)
     exctract(Feed)
+
+    PROTOCOL:
+    followMe()
+    forgetMe()
+
+
 
 REQUEST:
     sendRequest()
