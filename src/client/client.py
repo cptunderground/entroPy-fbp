@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import multiprocessing
 import time
 import signal
 from multiprocessing import Pool, Queue, Event
@@ -6,7 +7,7 @@ import pdb  # noqa
 import rpyc
 
 
-def echo(main_queue, main_event, value, res):
+def echo(main_queue, main_event, value, return_list):
     try:
         if (main_event.is_set()):
             fileno = "unknown"
@@ -14,8 +15,8 @@ def echo(main_queue, main_event, value, res):
             conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
             fileno = conn.fileno()
             response = conn.root.echo("Echo", value)
-            res.append(response)
-            print("from echo " + str(res))
+            return_list.append(response)
+            print("from echo " + str(return_list))
 
             conn.close()
     except Exception:
@@ -61,6 +62,8 @@ def echo_forever(main_queue, main_event):
         main_queue.put(_max)
 
 def main():
+    manager = multiprocessing.Manager()
+    return_list = manager.list()
     sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
     pool = Pool(processes=1)
     signal.signal(signal.SIGINT, sigint)
@@ -69,10 +72,11 @@ def main():
     main_queue = Queue()
     main_event = Event()
     main_event.set()
-    proc = pool.Process(target=echo, args=(main_queue, main_event, value, res))
+    proc = pool.Process(target=echo, args=(main_queue, main_event, value, return_list))
     proc.daemon = True
     proc.start()
-    print("from main: " + str(res))
+    proc.join()
+    print("from main: " + str(return_list))
 
 def main_forever():
     try:

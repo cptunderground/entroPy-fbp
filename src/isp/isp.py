@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import inspect
 import logging
+import multiprocessing
 import signal
 from multiprocessing import Pool, Queue, Event
 # import gevent
@@ -33,6 +34,8 @@ class EchoService(rpyc.Service):
         pass
 
     def exposed_echo(self, message, value):
+        manager = multiprocessing.Manager()
+        return_list = manager.list()
         if message == "Echo":
             print("received EchoService - forwarding to executing server")
             sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -42,12 +45,13 @@ class EchoService(rpyc.Service):
             main_queue = Queue()
             main_event = Event()
             main_event.set()
-            proc = pool.Process(target=echo, args=(main_queue, main_event, value, server_res))
+            proc = pool.Process(target=echo, args=(main_queue, main_event, value, return_list))
             proc.daemon = True
 
             proc.start()
-            print(server_res)
-            return server_res
+            proc.join()
+            print(return_list)
+            return str(return_list)
         else:
             return "Parameter Problem"
 
