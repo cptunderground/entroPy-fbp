@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # JetBrains Idea Folder
-src/.idea
+.idea/

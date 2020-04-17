@@ -14,10 +14,10 @@ class EchoService(rpyc.Service):
     def on_disconnect(self, conn):
         pass
 
-    def exposed_echo(self, message):
+    def exposed_echo(self, message, value):
         if message == "Echo":
             print("received EchoService - answering client")
-            return "Echo Reply"
+            return "Echo Reply: " + str(value)
         else:
             return "Parameter Problem"
 
@@ -32,5 +32,5 @@ if __name__ == "__main__":
         if rpyc.utils.server.Server in getattr(value, '__mro__', []):
             server_class[name] = value
     svc_server = server_class[choice]
-    echo_svc = svc_server(service=EchoService, port=18861, protocol_config={'allow_all_attrs': True})
+    echo_svc = svc_server(service=EchoService, port=18862, protocol_config={'allow_all_attrs': True})
     echo_svc.start()

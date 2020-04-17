@@ -6,6 +6,26 @@ import pdb  # noqa
 import rpyc
 
 
+def echo(main_queue, main_event, value, res):
+    try:
+        if (main_event.is_set()):
+            fileno = "unknown"
+            addr, port = "unknown", "unknown"
+            conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
+            fileno = conn.fileno()
+            response = conn.root.echo("Echo", value)
+            res.append(response)
+            print("from echo " + str(res))
+
+            conn.close()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        print("EXCEPT ('{0}', {1}) with fd {2}".format(addr, port, fileno))
+
+
+
+
 def echo_forever(main_queue, main_event):
     # sys.stdout = open(os.devnull, 'w')
     try:
@@ -40,8 +60,21 @@ def echo_forever(main_queue, main_event):
     finally:
         main_queue.put(_max)
 
-
 def main():
+    sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    pool = Pool(processes=1)
+    signal.signal(signal.SIGINT, sigint)
+    value = 'test'
+    res = []
+    main_queue = Queue()
+    main_event = Event()
+    main_event.set()
+    proc = pool.Process(target=echo, args=(main_queue, main_event, value, res))
+    proc.daemon = True
+    proc.start()
+    print("from main: " + str(res))
+
+def main_forever():
     try:
         print("starting")
         limit = 1
