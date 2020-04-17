@@ -82,9 +82,9 @@ def main_forever():
     try:
         print("starting")
         limit = 1
-        sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        #sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
         pool = Pool(processes=limit)
-        signal.signal(signal.SIGINT, sigint)
+        #signal.signal(signal.SIGINT, sigint)
         eid_proc = {}
         main_queue = Queue()
         main_event = Event()

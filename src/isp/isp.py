@@ -38,9 +38,9 @@ class EchoService(rpyc.Service):
         return_list = manager.list()
         if message == "Echo":
             print("received EchoService - forwarding to executing server")
-            sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            #sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
             pool = Pool(processes=1)
-            signal.signal(signal.SIGINT, sigint)
+            #signal.signal(signal.SIGINT, sigint)
             server_res = []
             main_queue = Queue()
             main_event = Event()
@@ -58,7 +58,7 @@ class EchoService(rpyc.Service):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    choice = 'OneShotServer'  # Debugging
+    choice = 'ThreadedServer'  # Debugging
     svc_isp = None
     isp_class = {}
     # Populate for 'ForkingServer', 'GeventServer', 'OneShotServer', 'ThreadPoolServer', and 'ThreadedServer'
