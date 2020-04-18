@@ -14,7 +14,7 @@ class PingService(rpyc.Service):
     def on_disconnect(self, conn):
         pass
 
-    def exposed_echo(self, message):
+    def exposed_ping(self, message):
         if message == "Ping":
             print("received PingService - answering client")
             return True
@@ -37,6 +37,33 @@ class EchoService(rpyc.Service):
             return "Parameter Problem"
 
 
+class TestingService(rpyc.Service):
+    def on_connect(self, conn):
+        pass
+
+    def on_disconnect(self, conn):
+        pass
+
+    def exposed_ping(self, message):
+        if message == "Ping":
+            print("received PingService - answering client")
+            return True
+        else:
+            return "Parameter Problem"
+
+    def exposed_echo(self, message, value):
+        if message == "Echo":
+            print("received EchoService - answering client")
+            return "Echo Reply: " + str(value)
+        else:
+            return "Parameter Problem"
+
+    def exposed_introduce_me(self):
+        return True
+
+    def exposed_detruce_me(self):
+        return True
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     choice = 'ThreadedServer'  # Debugging
@@ -47,5 +74,7 @@ if __name__ == "__main__":
         if rpyc.utils.server.Server in getattr(value, '__mro__', []):
             server_class[name] = value
     svc_server = server_class[choice]
-    echo_svc = svc_server(service=EchoService, port=18862, protocol_config={'allow_all_attrs': True})
+
+    # TODO: Ask Tschudin better choice: Either opening a port for each service or handle all services in one service on one port
+    echo_svc = svc_server(service=TestingService, port=18862, protocol_config={'allow_all_attrs': True})
     echo_svc.start()

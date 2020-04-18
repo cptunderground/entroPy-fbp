@@ -13,7 +13,7 @@ def echo(main_queue, main_event, value, return_list):
         if (main_event.is_set()):
             fileno = "unknown"
             addr, port = "unknown", "unknown"
-            conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
+            conn = rpyc.connect("0.0.0.0", 18862, config={"sync_request_timeout": 300})
             fileno = conn.fileno()
             response = conn.root.echo("Echo", value)
             return_list.append(response)
@@ -31,7 +31,7 @@ def ping(main_queue, main_event, value, return_list):
             addr, port = "unknown", "unknown"
             conn = rpyc.connect("0.0.0.0", 18862, config={"sync_request_timeout": 300})
             fileno = conn.fileno()
-            response = conn.root.echo("Ping")
+            response = conn.root.ping("Ping")
             return_list.append(response)
             conn.close()
     except Exception:
@@ -42,9 +42,9 @@ def ping(main_queue, main_event, value, return_list):
 def main(command, value):
     manager = multiprocessing.Manager()
     return_list = manager.list()
-    #sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
     pool = Pool(processes=1)
-    #signal.signal(signal.SIGINT, sigint)
+
     value = 'test' + str(command)
     main_queue = Queue()
     main_event = Event()
@@ -62,6 +62,8 @@ if __name__ == "__main__":
     while (True):
         command = input()
         p = multiprocessing.Process(main(command, "testetst"))
+        p.start()
+        p.join()
     '''
     for i in range(5):
         main(i)
