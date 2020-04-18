@@ -7,6 +7,7 @@ import logging
 import rpyc
 
 
+
 class EchoService(rpyc.Service):
     def on_connect(self, conn):
         pass

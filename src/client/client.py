@@ -5,6 +5,7 @@ import signal
 from multiprocessing import Pool, Queue, Event
 import pdb  # noqa
 import rpyc
+import curses
 
 
 def echo(main_queue, main_event, value, return_list):
@@ -16,8 +17,6 @@ def echo(main_queue, main_event, value, return_list):
             fileno = conn.fileno()
             response = conn.root.echo("Echo", value)
             return_list.append(response)
-            print("from echo " + str(return_list))
-
             conn.close()
     except Exception:
         import traceback
@@ -61,14 +60,13 @@ def echo_forever(main_queue, main_event):
     finally:
         main_queue.put(_max)
 
-def main():
+def main(i):
     manager = multiprocessing.Manager()
     return_list = manager.list()
-    sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    #sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
     pool = Pool(processes=1)
-    signal.signal(signal.SIGINT, sigint)
-    value = 'test'
-    res = []
+    #signal.signal(signal.SIGINT, sigint)
+    value = 'test' + str(i)
     main_queue = Queue()
     main_event = Event()
     main_event.set()
@@ -128,4 +126,13 @@ def main_forever():
 
 
 if __name__ == "__main__":
-    main()
+
+    stdscr = curses.initscr()
+    stdscr.addnstr('hello world',8)
+    stdscr.getch()
+    curses.endwin()
+
+    '''
+    for i in range(5):
+        main(i)
+    '''

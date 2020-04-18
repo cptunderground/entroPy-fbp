@@ -51,7 +51,7 @@ class EchoService(rpyc.Service):
             proc.start()
             proc.join()
             print(return_list)
-            return str(return_list)
+            return str(return_list[0])
         else:
             return "Parameter Problem"
 
