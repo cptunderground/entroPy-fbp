@@ -7,6 +7,20 @@ import logging
 import rpyc
 
 
+class PingService(rpyc.Service):
+    def on_connect(self, conn):
+        pass
+
+    def on_disconnect(self, conn):
+        pass
+
+    def exposed_echo(self, message):
+        if message == "Ping":
+            print("received PingService - answering client")
+            return True
+        else:
+            return "Parameter Problem"
+
 
 class EchoService(rpyc.Service):
     def on_connect(self, conn):
