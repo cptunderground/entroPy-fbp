@@ -28,8 +28,7 @@ def execute(target, attrs):
 
 if __name__ == '__main__':
 
-    args = get_args(display_name, key, isp_ip,
-                    isp_port)  # name is variable, key is unique received on business contract with isp,
+    args = get_args(display_name, key, isp_ip, isp_port)  # name is variable, key is unique received on business contract with isp,
     isp = handshake_isp(args)
 
     window = start_window(args, isp)

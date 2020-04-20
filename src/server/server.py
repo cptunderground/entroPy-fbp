@@ -45,24 +45,22 @@ class TestingService(rpyc.Service):
         pass
 
     def exposed_ping(self, message):
-        if message == "Ping":
-            print("received PingService - answering client")
-            return True
-        else:
-            return "Parameter Problem"
+        print("received PingService - answering client")
+        return True
 
-    def exposed_echo(self, message, value):
-        if message == "Echo":
-            print("received EchoService - answering client")
-            return "Echo Reply: " + str(value)
-        else:
-            return "Parameter Problem"
+    def exposed_echo(self, value):
+        print("received EchoService - answering client")
+        return "Echo Reply: " + str(value)
 
-    def exposed_introduce_me(self):
+    def exposed_introduce_me(self, value):
         return True
 
     def exposed_detruce_me(self):
         return True
+
+    def exposed_get_news(self):
+        return "Today's News: Some important news."
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
@@ -76,5 +74,6 @@ if __name__ == "__main__":
     svc_server = server_class[choice]
 
     # TODO: Ask Tschudin better choice: Either opening a port for each service or handle all services in one service on one port
-    echo_svc = svc_server(service=TestingService, port=18862, protocol_config={'allow_all_attrs': True})
-    echo_svc.start()
+    testing_svc = svc_server(service=TestingService, port=18862, protocol_config={'allow_all_attrs': True})
+
+    testing_svc.start()
