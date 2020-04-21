@@ -1,30 +1,37 @@
 # services
 # first
-def echo():
-    isp.use_service(target=echo, attrs=[attrs])
-    return echo_string
+def echo(attrs[],  response):
+    handled_attrs[] = handle_echo_related_stuff(attrs[])
+    response = isp.echo(attrs=handled_attrs[])
+    return response
 
 
-def ping():
-    isp.use_service(target=ping, attrs=[attrs])
-    return ping_string
+def ping(attrs[],  response):
+    handled_attrs[] = handle_ping_related_stuff(attrs[])
+    response = isp.ping(attrs=handled_attrs[])
+    return response
 
 
-def introduce_me(server):
-    isp.use_service(target=introduce, attrs=[attrs])
-    return bool_successful
+def introduce_me(attrs[],  response):
+    handled_attrs[] = handle_introduction_related_stuff(attrs[])
+    response = isp.introduce_me(attrs=handled_attrs[])
+    return response
 
 
-def detruce_me(server):
-    isp.use_service(target=detruce, attrs=[attrs])
-    return bool_successful
+def detruce_me(attrs[],  response):
+    handled_attrs[] = handle_deduction_related_stuff(attrs[])
+    response = isp.detruce_me(target=detruce, attrs=handled_attrs[])
+    return response
 
 
 # better
-def execute(target, attrs):
-    isp.use_service(target=target, attrs=[attrs])
+def execute(target, attrs, response):
+    successful, result = isp.use_service(target=target, attrs=[attrs])
     return (successful, target_class(result) if successful else (successful, error(result))
 
+def listen_to_isp(isp):
+    #TODO: Architekture
+    #dont know how a listener is defined best
 
 if __name__ == '__main__':
 
@@ -39,7 +46,10 @@ if __name__ == '__main__':
         response = (bool successful, result)   # some kind of global or manager
 
         input = get_service(service, [attrs])  # waiting for input
-        executeing_process = execute(target=input.service, attrs=input.[attrs], res=response)
+        executing_process = multiprocessing.Process(target=input.service, args(input.attrs[], response))
+        #better:
+        executing_process = multiprocessing.Process(target=execute, args(input.service, input.attrs[], response))
+
         executeing_process.start()
         execute(executeing_process).join()  # waits for isp/server answer
 
