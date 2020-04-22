@@ -7,36 +7,6 @@ import logging
 import rpyc
 
 
-class PingService(rpyc.Service):
-    def on_connect(self, conn):
-        pass
-
-    def on_disconnect(self, conn):
-        pass
-
-    def exposed_ping(self, message):
-        if message == "Ping":
-            print("received PingService - answering client")
-            return True
-        else:
-            return "Parameter Problem"
-
-
-class EchoService(rpyc.Service):
-    def on_connect(self, conn):
-        pass
-
-    def on_disconnect(self, conn):
-        pass
-
-    def exposed_echo(self, message, value):
-        if message == "Echo":
-            print("received EchoService - answering client")
-            return "Echo Reply: " + str(value)
-        else:
-            return "Parameter Problem"
-
-
 class TestingService(rpyc.Service):
     def on_connect(self, conn):
         pass
@@ -46,14 +16,14 @@ class TestingService(rpyc.Service):
 
     def exposed_ping(self, message):
         print("received PingService - answering client")
-        return True
+        return "ping True"
 
     def exposed_echo(self, value):
         print("received EchoService - answering client")
         return "Echo Reply: " + str(value)
 
     def exposed_introduce_me(self, value):
-        return True
+        return "introduce me true"
 
     def exposed_detruce_me(self):
         return True

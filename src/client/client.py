@@ -91,12 +91,15 @@ def handle_service(main_queue, main_event, command, attributes, return_list):
         if (main_event.is_set()):
             fileno = "unknown"
             addr, port = "unknown", "unknown"
-            conn = rpyc.connect("0.0.0.0", 18862, config={"sync_request_timeout": 300})
+            conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
             fileno = conn.fileno()
 
-            execute = eval("conn.root." + command)
+            #execute = eval("conn.root." + command)
+            #response = execute(attributes)
 
-            response = execute(attributes)
+            response = conn.root.eval_service(command, attributes)
+
+
             return_list.append(response)
             conn.close()
     except Exception:

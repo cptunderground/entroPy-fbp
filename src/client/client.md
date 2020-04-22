@@ -1,11 +1,12 @@
 # Client Pseudo Code
 Generally the Client shall run two different processes. The *service listening* process, where information can be delivered to
-without the client specifically requesting any service and the *service executing* process, where the user decides, what serves they want to use
+without the client specifically requesting any service and the *service executing* process, where the user decides, what services they want to use
 
 ####Service Executing Process
     while (alive):
         response = (bool successful, result)   # some kind of global or manager
-
+        
+        
         input = get_service(service, attrs[])  # waiting for input
         executing_process = multiprocessing.Process(target=input.service, args(input.attrs[], response))
         executeing_process.start()
@@ -24,24 +25,26 @@ The executing process cann pass arguments to premade methods which invoke isp se
 
     def echo(attrs[],  response):
         handled_attrs[] = handle_echo_related_stuff(attrs[])
+        conn = rpyc.connect("0.0.0.0", 18862, config={"sync_request_timeout": 300})
+        isp = conn.root
         response = isp.echo(attrs=handled_attrs[])
         return response
     
     
     def ping(attrs[],  response):
-        handled_attrs[] = handle_ping_related_stuff(attrs[])
+        ...
         response = isp.ping(attrs=handled_attrs[])
         return response
     
     
     def introduce_me(attrs[],  response):
-        handled_attrs[] = handle_introduction_related_stuff(attrs[])
+        ...
         response = isp.introduce_me(attrs=handled_attrs[])
         return response
     
     
     def detruce_me(attrs[],  response):
-        handled_attrs[] = handle_deduction_related_stuff(attrs[])
+        ...
         response = isp.detruce_me(target=detruce, attrs=handled_attrs[])
         return response
         
@@ -56,9 +59,11 @@ We could use something like:
     
 and 
 
-    def execute(target, attrs, response):
-        successful, result = isp.eval_service(target=target, attrs=[attrs])
-        return (successful, target_class(result) if successful else (successful, error(result))
+    def execute(target, attrs[], response):
+        handled_attrs[] = handle_deduction_related_stuff(attrs[])
+        conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
+        isp = conn.root
+        response = isp.eval_service(target=target, attrs=handled_attrs[]) #is (successful, result) tupel
+        return response
 
-
-     
+So most to all logic is basically managed by the ISP and the client gets merely notified about new services from the ISP
