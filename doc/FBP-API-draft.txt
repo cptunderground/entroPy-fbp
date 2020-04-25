@@ -37,6 +37,7 @@ CONTRACT:
     inviteToChannel(Channel, User)
     joinChannel(Channel)
     removeFromChannel(User)
+    
 
     FEED:
     E2E Additions:

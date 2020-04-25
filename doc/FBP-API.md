@@ -8,6 +8,7 @@
 |detruce_me()   	        |read_detruce()   	    |send_detruce()         	|read_detruce()   	    |->   	|
 |read_result()   	        |send_result()   	    |read_result()   	        |send_result()   	    |<-   	|
 |   	                    |   	                |   	                    |   	                |   	|
+disruption tollerant, ISP notifies client that it
 ### 2: 
 |Client   	                |ISP_C   	            |ISP_S   	                |Server   	            |   	|
 |:-:	                    |:-:	                |:-:	                    |:-:	                |:-:	|
@@ -23,7 +24,7 @@
 |Client   	                |ISP_C   	            |ISP_S   	                |Server   	            |   	|
 |:-:	                    |:-:	                |:-:	                    |:-:	                |:-:	|
 |read_announce()            |send_announce(*bool*)  |read_announce()       	    |announce_service(*bool*)|<- 	|
-*does client need to send "ack"?*
+*does client need to send "ack"?* No
 ## Request Service
 |Client   	                |ISP_C   	            |ISP_S   	                |Server   	            |   	|
 |:-:	                    |:-:	                |:-:	                    |:-:	                |:-:	|
@@ -32,24 +33,30 @@
 
 # Client Pseudo Code
 ## Send Request
-    def send_request(service: str, ID: int, attributes: some class, instance, whatever):
-        marshalled_request = marshall(service, ID, attributes)
-        wr_feed(marshalled_attributes)
+    def send_request(service: str, destination: *isp/server*, ID: int, attributes: some class, instance, whatever):
+        marshalled_request = marshall(service, request_ID, attributes) #cbor handles python DS to bytearray
+        wr_feed(destination.to_feed, marshalled_attributes)
         
         # adapted from rpyc
         conn = rpyc.connect("0.0.0.0", 18861, config={"sync_request_timeout": 300})
         marshalled_response = conn.root.send_request(marshalled_request) #this is the exposed send_request method from the ISP, see rpyc
-        result = read_result(marshalled_response)
+        result = read_result(destination.from_feed, request_ID, marshalled_response_list)
+
+        #entscheiden wie Werte zurück gegeben werden. Resultat Objekt, bool...
+
 The send_request method basically just sends serialized information with what the ISP has to do what.
     
+    #RETHINK
     def marshall(service: str, ID: int, attributes: some class, instance, whatever):
 Marshalls the given parameters into a serialized datastructure to pass it over the network.
 marshalling also provides the code base, so the isp or server get thast aswell
     
+    #RETHINK
     def wr_feed(feed, information):
 Should write the ongoing process information on the client to its corresponding feed.
    
 ## Read Result
+ANPASSEN
     def exposed_send_result(data):
         read_result(data)
     def read_result(response: marshalled_response):
@@ -62,6 +69,7 @@ The read_result method just demarshalls the response to the requested service fr
 written in the feed aswell. The idea behind that is the local storage of already received service results and the 
 program can build itself from this feed.
     
+    #RETHINK
     def demarshall(response):
         service = response.extract(service)
         ID = response.extract(ID)
@@ -70,6 +78,7 @@ program can build itself from this feed.
         return service, ID, response
 Demarshalling is the opposite of marshalling. So the response from the ISP gets written back into the instances (or memory). 
     
+    #RETHINK
     def rd_feed(ID):
         load
         
@@ -240,15 +249,15 @@ Adapted from RPyC Services.
             conn = rpyc.connect(data.isp.ip, data.isp.port, config={"sync_request_timeout": 300})
             conn.root.send_result(*successful*)
             for svc in Services:
-                 announce_service(svc)
+                announce_service(svc)
         else:
             client_datastruct.delete(data.client)
 ## Announce Service
     def announce_service():
     def retire_service():
     
-#Feed
-#Data
+# Feed
+# Data
     class Data():
         self.service
         self.ID
