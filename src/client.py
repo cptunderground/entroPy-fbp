@@ -72,7 +72,7 @@ def send_request(request: dict):
     feed_entry = {
         'ID': next_request_ID,
         'type': 'request',
-        'source': 'client',
+        'source': args.name,
         'destination': request['destination'],
         'service': request['service'],
         'attributes': request['attributes']
@@ -129,8 +129,8 @@ def create_feed(name):
         feed_entry = {
             'ID': next_request_ID,
             'type': 'initiation',
-            'source': 'client',
-            'destination': 'client',
+            'source': args.name,
+            'destination': args.name,
             'service': 'init',
             'attributes': name
         }
@@ -196,9 +196,21 @@ if __name__ == '__main__':
 
 
     #request = handle_input(input())
-    input = '--testservice -testdestination [testattributes]'
-    request = handle_input(input)
-    if request != None:
-        send_request(request)
-    else:
-        print('')
+    input = []
+    input.append('--echo -isp [The echo]')
+    input.append('--echo -isp [An, echo, list]')
+    input.append('--testservice -something [does not matter]')
+    input.append('nothing right')
+    input.append('--stream -netflix [Black Mirror]')
+
+    for line in input:
+
+        print(line)
+        request = handle_input(line)
+        if request != None:
+            send_request(request)
+        else:
+            print('')
+
+    print('dumping feed...')
+    pcap.dump(client_log)
