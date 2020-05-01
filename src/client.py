@@ -8,6 +8,7 @@ import cbor2
 
 import lib.feed as feed
 import lib.pcap as pcap
+import lib.crypto as crypto
 
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
@@ -65,7 +66,8 @@ def handle_input(msg):
 
 def send_request(request: dict):
     global next_request_ID
-
+    global client_log
+    global client_key
     # TODO exchange sourece and dest with public keys
     feed_entry = {
         'ID': next_request_ID,
@@ -77,18 +79,76 @@ def send_request(request: dict):
     }
     next_request_ID += 1
 
-    print(f'writing in {args.pcapfile}: {feed_entry}')
-    wr_feed(args.pcapfile, args.keyfile, feed_entry)
+    print(f'writing in {client_log}: {feed_entry}')
+    wr_feed(client_log, client_key, feed_entry)
 
 
 def wr_feed(f, key, msg):
     feed.append_feed(f, key, msg)
 
-def init():
+def create_feed(name):
+    global client_log
+    global client_key
     global next_request_ID
 
+    if os.path.exists(f'feeds/{name}/{name}.pcap') and os.path.exists(f'feeds/{name}/{name}.key'):
+        print(f'Feed and key for {name} exist')
+        client_key = f'feeds/{name}/{name}.key'
+        client_log = f'feeds/{name}/{name}.pcap'
+    else:
+        key_pair = crypto.ED25519()
+        key_pair.create()
+        header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
+        keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+        if not os.path.exists(f'feeds/{name}'):
+            os.mkdir(f'feeds/{name}')
+        f = open(f'feeds/{name}/{name}.key', 'w')
+        f.write(header)
+        f.write(keys)
+        f.close()
+
+        try:
+            os.remove(f'feeds/{name}/{name}.pcap')
+        except:
+            pass
+
+        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}.key')
+        client_feed = feed.FEED(f'feeds/{name}/{name}.pcap', fid, signer, True)
+
+
+        client_log = f'feeds/{name}/{name}.pcap'
+        client_key = f'feeds/{name}/{name}.key'
+
+
+
+        # TODO exchange sourece and dest with public keys
+        feed_entry = {
+            'ID': next_request_ID,
+            'type': 'initiation',
+            'source': 'client',
+            'destination': 'client',
+            'service': 'init',
+            'attributes': name
+        }
+        next_request_ID += 1
+
+        print(f'writing in {client_log}: {feed_entry}')
+        client_feed.write(feed_entry)
+
+
+
+def init():
+    global next_request_ID
+    print(client_log)
+
+    create_feed(args.name)
+
     print('Reading Feed...')
-    p = pcap.PCAP(args.pcapfile)
+    p = pcap.PCAP(client_log)
     p.open('r')
     for w in p:
         # here we apply our knowledge about the event/pkt's internal struct
@@ -108,7 +168,7 @@ def init():
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             print(f'ID={e[2]["ID"]}')
 
-            next_request_ID = max(e[2]["ID"],next_request_ID)
+            next_request_ID = max(int(e[2]["ID"]),next_request_ID)
 
     next_request_ID += 1
     p.close()
@@ -117,11 +177,15 @@ def init():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
-    parser.add_argument('--keyfile')
-    parser.add_argument('pcapfile', metavar='PCAPFILE')
+    #parser.add_argument('--keyfile')
+    #parser.add_argument('pcapfile', metavar='PCAPFILE')
+    parser.add_argument('name')
 
     args = parser.parse_args()
     next_request_ID = 0
+    client_log = 'unknown'
+    client_key = 'unknown'
+
 
     init()
 
