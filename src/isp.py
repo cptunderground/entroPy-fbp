@@ -188,6 +188,76 @@ def handle_request(log_entry):
     except:
         invalid_service(log_entry)
 
+def on_created(event):
+    print(f"hey, {event.src_path} has been created!")
+
+def on_deleted(event):
+    print(f"what the f**k! Someone deleted {event.src_path}!")
+
+def on_modified(event):
+    print(f"hey buddy, {event.src_path} has been modified")
+    print(f'{event.src_path}')
+    if f'{event.src_path[2:]}' == client_log:
+        print(True)
+        handle_new_requests()
+
+def on_moved(event):
+    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+
+def handle_new_requests():
+    p = pcap.PCAP(client_log)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+        print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+        print(f"   hashref={href.hex()}")
+        print(f"   content={e[2]}")
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            request_ID = e[2]["ID"]
+            print(f'ID={e[2]["ID"]}')
+
+            if request_ID > next_result_ID:
+                read_request(e[2])
+
+    p.close()
+
+def start_watchdog():
+    import time
+    from watchdog.observers import Observer
+    from watchdog.events import PatternMatchingEventHandler
+    patterns = "*"
+    ignore_patterns = ""
+    ignore_directories = True
+    case_sensitive = True
+    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+
+    my_event_handler.on_created = on_created
+    my_event_handler.on_deleted = on_deleted
+    my_event_handler.on_modified = on_modified
+    my_event_handler.on_moved = on_moved
+
+    path = "./feeds"
+    go_recursively = True
+    my_observer = Observer()
+    my_observer.schedule(my_event_handler, path, recursive=go_recursively)
+
+    my_observer.start()
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        my_observer.stop()
+        my_observer.join()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-ISP for FBP')
@@ -206,6 +276,9 @@ if __name__ == '__main__':
     init()
     init_peer()
 
+
+
+    start_watchdog()
 
     print("dumping feed...")
     pcap.dump(isp_log)

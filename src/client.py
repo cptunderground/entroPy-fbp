@@ -143,6 +143,7 @@ def create_feed(name):
 
 def init():
     global next_request_ID
+    global highest_result_ID
     print(client_log)
 
     create_feed(args.name)
@@ -161,9 +162,9 @@ def init():
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
-        print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-        print(f"   hashref={href.hex()}")
-        print(f"   content={e[2]}")
+        #print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+        #print(f"   hashref={href.hex()}")
+        #print(f"   content={e[2]}")
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             print(f'ID={e[2]["ID"]}')
@@ -172,7 +173,121 @@ def init():
 
     next_request_ID += 1
     p.close()
+
+    p = pcap.PCAP(isp_log)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+        #print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+        #print(f"   hashref={href.hex()}")
+        #print(f"   content={e[2]}")
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'result':
+            print(f'ID={e[2]["ID"]}')
+
+            highest_result_ID = max(int(e[2]["ID"]), highest_result_ID)
+
+    highest_result_ID += 1
+    p.close()
+
+
     pass
+
+def read_result(ID):
+    global highest_result_ID
+    p = pcap.PCAP(isp_log)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'result':
+            if e[2]['ID'] == ID:
+                print(f'ID={e[2]["ID"]}')
+                print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                print(f"   hashref={href.hex()}")
+                print(f"   content={e[2]}")
+                handle_result(e[2])
+                highest_result_ID += 1
+    print(f'highest{highest_result_ID}')
+    p.close()
+
+def handle_result(log_entry):
+    print(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
+    print(f'-> {log_entry}')
+def handle_new_results():
+    print('here')
+    global highest_result_ID
+    read_result(highest_result_ID)
+
+def on_created(event):
+    print(f"hey, {event.src_path} has been created!")
+
+def on_deleted(event):
+    print(f"what the f**k! Someone deleted {event.src_path}!")
+
+def on_modified(event):
+    print(f"hey buddy, {event.src_path} has been modified")
+    print(f'{event.src_path}')
+    if f'{event.src_path[2:]}' == isp_log:
+        print(True)
+        handle_new_results()
+
+def on_moved(event):
+    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+
+def start_watchdog():
+    import time
+    from watchdog.observers import Observer
+    from watchdog.events import PatternMatchingEventHandler
+    patterns = "*"
+    ignore_patterns = ""
+    ignore_directories = True
+    case_sensitive = True
+    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+
+    my_event_handler.on_created = on_created
+    my_event_handler.on_deleted = on_deleted
+    my_event_handler.on_modified = on_modified
+    my_event_handler.on_moved = on_moved
+
+    path = "./feeds"
+    go_recursively = True
+    my_observer = Observer()
+    my_observer.schedule(my_event_handler, path, recursive=go_recursively)
+
+    my_observer.start()
+    try:
+        while True:
+            inp = input()
+            request = handle_input(inp)
+            if request != None:
+                send_request(request)
+            else:
+                print('')
+            time.sleep(1)
+            print('next imput:')
+    except KeyboardInterrupt:
+        my_observer.stop()
+        my_observer.join()
 
 
 if __name__ == '__main__':
@@ -180,11 +295,15 @@ if __name__ == '__main__':
     #parser.add_argument('--keyfile')
     #parser.add_argument('pcapfile', metavar='PCAPFILE')
     parser.add_argument('name')
+    parser.add_argument('peers')
 
     args = parser.parse_args()
     next_request_ID = 0
+    highest_result_ID = 0
     client_log = 'unknown'
     client_key = 'unknown'
+
+    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap'
 
 
     init()
@@ -196,21 +315,23 @@ if __name__ == '__main__':
 
 
     #request = handle_input(input())
-    input = []
-    input.append('--echo -isp [The echo]')
-    input.append('--echo -isp [An, echo, list]')
-    input.append('--testservice -something [does not matter]')
-    input.append('nothing right')
-    input.append('--stream -netflix [Black Mirror]')
+    line_in = []
+    line_in.append('--echo -isp [The echo]')
+    line_in.append('--echo -isp [An, echo, list]')
+    line_in.append('--testservice -something [does not matter]')
+    line_in.append('nothing right')
+    line_in.append('--stream -netflix [Black Mirror]')
 
-    for line in input:
+    start_watchdog()
 
-        print(line)
+    '''while True:
+        inp = input()
         request = handle_input(line)
         if request != None:
             send_request(request)
         else:
-            print('')
+            print('')'''
+
 
     print('dumping feed...')
     pcap.dump(client_log)
