@@ -303,7 +303,7 @@ if __name__ == '__main__':
     client_log = 'unknown'
     client_key = 'unknown'
 
-    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap'
+    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap' # 
 
 
     init()
@@ -335,3 +335,10 @@ if __name__ == '__main__':
 
     print('dumping feed...')
     pcap.dump(client_log)
+
+# TODO: Refactor
+# TODO: Logging
+
+
+
+

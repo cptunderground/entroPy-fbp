@@ -9,6 +9,8 @@ import lib.pcap as pcap
 import lib.crypto as crypto
 import services
 
+import logging
+
 
 def create_feed(name, peers):
     global isp_key
@@ -16,17 +18,22 @@ def create_feed(name, peers):
     global next_result_ID
 
     if os.path.exists(f'feeds/{name}/{name}_{peers}.pcap') and os.path.exists(f'feeds/{name}/{name}_{peers}.key'):
-        print(f'Feed and key for {name} exist')
+        logging.info(f'Feed and key for {name} exist')
         isp_key = f'feeds/{name}/{name}_{peers}.key'
         isp_log = f'feeds/{name}/{name}_{peers}.pcap'
+        logging.info(f'ISP-LOG:{isp_log}')
+        logging.info(f'ISP-KEY:{isp_key}')
+
     else:
+        logging.info(f'Feed for {name} does not exist')
+        logging.info(f'Creating feed for {name}')
         key_pair = crypto.ED25519()
         key_pair.create()
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.warning("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.warning('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         if not os.path.exists(f'feeds/{name}'):
             os.mkdir(f'feeds/{name}')
@@ -46,6 +53,9 @@ def create_feed(name, peers):
         isp_log = f'feeds/{name}/{name}_{peers}.pcap'
         isp_key = f'feeds/{name}/{name}_{peers}.key'
 
+        logging.info(f'Created Feed for {name} in {isp_log}')
+        logging.info(f'Created Key for {name} in {isp_key}')
+
         # TODO exchange source and dest with public keys
         feed_entry = {
             'ID': next_result_ID,
@@ -57,17 +67,17 @@ def create_feed(name, peers):
         }
         next_result_ID += 1
 
-        print(f'writing in {client_log}: {feed_entry}')
+        logging.info(f'Writing in {isp_log}: {feed_entry}')
         client_feed.write(feed_entry)
 
 
 def init():
     global next_result_ID
-    print(isp_log)
+
 
     create_feed(args.name, args.peers)
 
-    print('Reading Feed...')
+    logging.info('Building from feed...')
     p = pcap.PCAP(isp_log)
     p.open('r')
     for w in p:
@@ -81,12 +91,12 @@ def init():
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
-        print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-        print(f"   hashref={href.hex()}")
-        print(f"   content={e[2]}")
 
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
-            print(f'ID={e[2]["ID"]}')
+            logging.debug(f'ID={e[2]["ID"]}')
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
 
             next_result_ID = max(int(e[2]["ID"]), next_result_ID)
 
@@ -99,6 +109,9 @@ def init_peer():
     if os.path.exists(f'feeds/{args.peers}/{args.peers}.pcap'):
         global client_log
         client_log = f'feeds/{args.peers}/{args.peers}.pcap'
+
+        logging.info(f'Feed for {args.peers} exists')
+        logging.info(f'Client-LOG:{client_log}')
 
         p = pcap.PCAP(client_log)
         p.open('r')
@@ -113,13 +126,14 @@ def init_peer():
             seq = e[0][1]
             if e[2] != None:
                 e[2] = cbor2.loads(e[2])
-            print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            print(f"   hashref={href.hex()}")
-            print(f"   content={e[2]}")
+
 
             if isinstance(e[2], dict) and e[2]['type'] == 'request':
                 request_ID = e[2]["ID"]
-                print(f'ID={e[2]["ID"]}')
+                logging.debug(f'ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
 
                 if request_ID > next_result_ID:
                     read_request(e[2])
@@ -127,6 +141,8 @@ def init_peer():
         p.close()
         pass
     else:
+        logging.critical(f'Feed for client does not exist')
+
         pass
 
 
@@ -140,7 +156,8 @@ def send_result(log_entry, result):
         'result': result
     }
 
-    print(f'writing in {isp_log}: {feed_entry}')
+    logging.info(f'Sending result')
+    logging.info(f'Writing in {isp_log}: {feed_entry}')
     wr_feed(isp_log, isp_key, feed_entry)
 
 
@@ -153,19 +170,19 @@ def send_invalid_result(log_entry, error):
 
 
 def invalid_format(log_entry):
-    print("INVALID LOG ENTRY")
-    print(log_entry)
+    logging.warning("INVALID LOG ENTRY")
+    logging.debug(log_entry)
     send_invalid_result(log_entry, 'format')
 
 
 def invalid_service(log_entry):
-    print("INVALID SERVICE")
-    print(log_entry)
+    logging.warning("INVALID SERVICE")
+    logging.debug(log_entry)
     send_invalid_result(log_entry, 'service')
 
 
 def read_request(log_entry: dict):
-    print(log_entry['ID'])
+    logging.info(log_entry['ID'])
     if log_entry['ID'] == None:
         invalid_format(log_entry)
     elif log_entry['type'] == None:
@@ -182,6 +199,7 @@ def read_request(log_entry: dict):
 
 def handle_request(log_entry):
     try:
+        logging.info(f'Evaluating service')
         f = eval(f'services.{log_entry["service"]}')
         result = f(log_entry['attributes'])
         send_result(log_entry, result)
@@ -189,20 +207,19 @@ def handle_request(log_entry):
         invalid_service(log_entry)
 
 def on_created(event):
-    print(f"hey, {event.src_path} has been created!")
+    logging.info(f"hey, {event.src_path} has been created!")
 
 def on_deleted(event):
-    print(f"what the f**k! Someone deleted {event.src_path}!")
+    logging.critical(f"what the f**k! Someone deleted {event.src_path}!")
 
 def on_modified(event):
-    print(f"hey buddy, {event.src_path} has been modified")
-    print(f'{event.src_path}')
+    logging.info(f"Feed update:{event.src_path}")
     if f'{event.src_path[2:]}' == client_log:
-        print(True)
+        logging.info(f'Handling request')
         handle_new_requests()
 
 def on_moved(event):
-    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    logging.critical(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
 
 def handle_new_requests():
     p = pcap.PCAP(client_log)
@@ -218,13 +235,14 @@ def handle_new_requests():
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
-        print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-        print(f"   hashref={href.hex()}")
-        print(f"   content={e[2]}")
+
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
-            print(f'ID={e[2]["ID"]}')
+            logging.debug(f'ID={e[2]["ID"]}')
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
 
             if request_ID > next_result_ID:
                 read_request(e[2])
@@ -252,6 +270,7 @@ def start_watchdog():
     my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
     my_observer.start()
+    logging.debug(f'Starting observing feeds')
     try:
         while True:
             time.sleep(10)
@@ -265,16 +284,26 @@ if __name__ == '__main__':
     # parser.add_argument('pcapfile', metavar='PCAPFILE')
     parser.add_argument('name')
     parser.add_argument('peers')  # TODO LIST
-
+    #parser.add_argument('--debug')
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG)
+
     next_result_ID = 0
     isp_log = 'unknown'
     isp_key = 'unknown'
 
     client_log = 'unknown'
 
+    logging.debug(f'ISP-LOG:{isp_log}')
+    logging.debug(f'ISP-KEY:{isp_key}')
+    logging.debug(f'Client-LOG:{client_log}')
+
+
+
     init()
     init_peer()
+
 
 
 
@@ -283,3 +312,6 @@ if __name__ == '__main__':
     print("dumping feed...")
     pcap.dump(isp_log)
     # request = handle_input(input())
+
+# TODO: Refactor
+# TODO: Logging
