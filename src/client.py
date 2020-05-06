@@ -1,8 +1,11 @@
 import hashlib
+import logging
+import multiprocessing
 import re
 import argparse
 import os
 import sys
+import time
 
 import cbor2
 
@@ -81,7 +84,16 @@ def send_request(request: dict):
 
     print(f'writing in {client_log}: {feed_entry}')
     wr_feed(client_log, client_key, feed_entry)
+    await_result(feed_entry['ID'])
 
+
+def await_result(ID):
+    global result_ID_list
+    result_ID_list.append(ID)
+
+def clear_await(ID):
+    global result_ID_list
+    result_ID_list.remove(ID)
 
 def wr_feed(f, key, msg):
     feed.append_feed(f, key, msg)
@@ -144,6 +156,8 @@ def create_feed(name):
 def init():
     global next_request_ID
     global highest_result_ID
+    global result_ID_list
+
     print(client_log)
 
     create_feed(args.name)
@@ -167,8 +181,8 @@ def init():
         #print(f"   content={e[2]}")
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
-            print(f'ID={e[2]["ID"]}')
-
+            logging.debug(f'from init request  ID={e[2]["ID"]}')
+            await_result(e[2]['ID'])
             next_request_ID = max(int(e[2]["ID"]),next_request_ID)
 
     next_request_ID += 1
@@ -187,23 +201,24 @@ def init():
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
-        #print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-        #print(f"   hashref={href.hex()}")
-        #print(f"   content={e[2]}")
+
 
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
-            print(f'ID={e[2]["ID"]}')
+            if result_ID_list.__contains__(e[2]['ID']):
+                logging.debug(f'from init result  ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+                read_result(e[2]['ID'])
 
-            highest_result_ID = max(int(e[2]["ID"]), highest_result_ID)
-
-    highest_result_ID += 1
     p.close()
 
 
     pass
 
 def read_result(ID):
-    global highest_result_ID
+    global result_ID_list
+
     p = pcap.PCAP(isp_log)
     p.open('r')
     for w in p:
@@ -218,41 +233,45 @@ def read_result(ID):
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
-
+        logging.debug(f'Search ID {ID}')
+        logging.debug(f'Actual ID {e[2]["ID"]}')
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
             if e[2]['ID'] == ID:
-                print(f'ID={e[2]["ID"]}')
-                print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-                print(f"   hashref={href.hex()}")
-                print(f"   content={e[2]}")
+                logging.debug(f'from read_result  ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+                if result_ID_list.__contains__(ID):
+                    clear_await(ID)
                 handle_result(e[2])
-                highest_result_ID += 1
-    print(f'highest{highest_result_ID}')
+                return True
+
     p.close()
+    return False
 
 def handle_result(log_entry):
-    print(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
-    print(f'-> {log_entry}')
+    logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
+    logging.info(f'-> {log_entry}')
+
 def handle_new_results():
-    print('here')
-    global highest_result_ID
-    read_result(highest_result_ID)
+    logging.info('Handle new results')
+    global result_ID_list
+    for result_ID in result_ID_list:
+        read_result(result_ID)
 
 def on_created(event):
-    print(f"hey, {event.src_path} has been created!")
+    logging.info(f"hey, {event.src_path} has been created!")
 
 def on_deleted(event):
-    print(f"what the f**k! Someone deleted {event.src_path}!")
+    logging.info(f"what the f**k! Someone deleted {event.src_path}!")
 
 def on_modified(event):
-    print(f"hey buddy, {event.src_path} has been modified")
-    print(f'{event.src_path}')
+    logging.info(f"hey buddy, {event.src_path} has been modified")
     if f'{event.src_path[2:]}' == isp_log:
-        print(True)
         handle_new_results()
 
 def on_moved(event):
-    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    logging.info(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
 
 def start_watchdog():
     import time
@@ -284,7 +303,7 @@ def start_watchdog():
             else:
                 print('')
             time.sleep(1)
-            print('next imput:')
+            logging.info('next imput:')
     except KeyboardInterrupt:
         my_observer.stop()
         my_observer.join()
@@ -298,17 +317,22 @@ if __name__ == '__main__':
     parser.add_argument('peers')
 
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
+
     next_request_ID = 0
     highest_result_ID = 0
+    result_ID_list = []
     client_log = 'unknown'
     client_key = 'unknown'
 
-    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap' # 
+    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap' #
 
 
     init()
 
-    print("Type Request {--service -destination [attributes]}")
+    logging.info("Type Request {--service -destination [attributes]}")
 
     request = {}
 
@@ -333,7 +357,7 @@ if __name__ == '__main__':
             print('')'''
 
 
-    print('dumping feed...')
+    logging.info('dumping feed...')
     pcap.dump(client_log)
 
 # TODO: Refactor

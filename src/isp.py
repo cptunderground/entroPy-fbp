@@ -60,10 +60,10 @@ def create_feed(name, peers):
         feed_entry = {
             'ID': next_result_ID,
             'type': 'initiation',
-            'source': 'client',
-            'destination': 'client',
+            'source': name,
+            'destination': name,
             'service': 'init',
-            'attributes': name
+            'attributes': None
         }
         next_result_ID += 1
 
@@ -73,7 +73,7 @@ def create_feed(name, peers):
 
 def init():
     global next_result_ID
-
+    global result_ID_list
 
     create_feed(args.name, args.peers)
 
@@ -98,14 +98,15 @@ def init():
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
 
+            await_result(e[2]['ID'])
             next_result_ID = max(int(e[2]["ID"]), next_result_ID)
 
-    next_result_ID += 1
     p.close()
     pass
 
 
 def init_peer():
+    global next_request_ID
     if os.path.exists(f'feeds/{args.peers}/{args.peers}.pcap'):
         global client_log
         client_log = f'feeds/{args.peers}/{args.peers}.pcap'
@@ -135,8 +136,10 @@ def init_peer():
                 logging.debug(f"   hashref={href.hex()}")
                 logging.debug(f"   content={e[2]}")
 
-                if request_ID > next_result_ID:
+                if request_ID > next_result_ID or not result_ID_list.__contains__(e[2]['ID']):
                     read_request(e[2])
+                    await_result(e[2]['ID'])
+                next_request_ID += 1
 
         p.close()
         pass
@@ -147,6 +150,7 @@ def init_peer():
 
 
 def send_result(log_entry, result):
+    global next_result_ID
     feed_entry = {
         'ID': log_entry['ID'],
         'type': 'result',
@@ -159,6 +163,35 @@ def send_result(log_entry, result):
     logging.info(f'Sending result')
     logging.info(f'Writing in {isp_log}: {feed_entry}')
     wr_feed(isp_log, isp_key, feed_entry)
+    next_result_ID += 1
+
+def send_request(request: dict):
+    global next_request_ID
+    global server_log
+
+
+    # TODO exchange sourece and dest with public keys
+    feed_entry = {
+        'ID': next_request_ID,
+        'type': 'request',
+        'source': args.name,
+        'destination': request['destination'],
+        'service': request['service'],
+        'attributes': request['attributes']
+    }
+    next_request_ID += 1
+
+    print(f'writing in {isp_log}: {feed_entry}')
+    wr_feed(isp_log, isp_key, feed_entry)
+    await_result(feed_entry['ID'])
+
+def await_result(ID):
+    global result_ID_list
+    result_ID_list.append(ID)
+
+def clear_await(ID):
+    global result_ID_list
+    result_ID_list.remove(ID)
 
 
 def wr_feed(f, key, msg):
@@ -180,6 +213,10 @@ def invalid_service(log_entry):
     logging.debug(log_entry)
     send_invalid_result(log_entry, 'service')
 
+def invalid_destination(log_entry):
+    logging.warning("INVALID DESTINATION")
+    logging.debug(log_entry)
+    send_invalid_result(log_entry, 'destination')
 
 def read_request(log_entry: dict):
     logging.info(log_entry['ID'])
@@ -198,6 +235,8 @@ def read_request(log_entry: dict):
 
 
 def handle_request(log_entry):
+    # TODO dynamic switching over destination
+
     try:
         logging.info(f'Evaluating service')
         f = eval(f'services.{log_entry["service"]}')
@@ -213,16 +252,20 @@ def on_deleted(event):
     logging.critical(f"what the f**k! Someone deleted {event.src_path}!")
 
 def on_modified(event):
+    # TODO Regex to check if it is feed file and then handle over feed file
     logging.info(f"Feed update:{event.src_path}")
     if f'{event.src_path[2:]}' == client_log:
-        logging.info(f'Handling request')
-        handle_new_requests()
+        logging.info(f'Handling client incoming')
+        handle_new_requests(client_log)
+    if f'{event.src_path[2:]}' == server_log:
+        logging.info(f'Handling server incoming')
+        handle_new_requests(server_log)
 
 def on_moved(event):
     logging.critical(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
 
-def handle_new_requests():
-    p = pcap.PCAP(client_log)
+def handle_new_requests(log):
+    p = pcap.PCAP(log)
     p.open('r')
     for w in p:
         # here we apply our knowledge about the event/pkt's internal struct
@@ -244,6 +287,8 @@ def handle_new_requests():
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
 
+            # TODO handle IDs
+            logging.info(f'request ID {request_ID}  next res {next_result_ID}')
             if request_ID > next_result_ID:
                 read_request(e[2])
 
@@ -287,13 +332,17 @@ if __name__ == '__main__':
     #parser.add_argument('--debug')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     next_result_ID = 0
+    next_request_ID = 0
+    result_ID_list = []
+
     isp_log = 'unknown'
     isp_key = 'unknown'
 
     client_log = 'unknown'
+    server_log = 'unknown'
 
     logging.debug(f'ISP-LOG:{isp_log}')
     logging.debug(f'ISP-KEY:{isp_key}')
