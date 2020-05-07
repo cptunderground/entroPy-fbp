@@ -103,10 +103,10 @@ def create_feed(name):
     global client_key
     global next_request_ID
 
-    if os.path.exists(f'feeds/{name}/{name}.pcap') and os.path.exists(f'feeds/{name}/{name}.key'):
+    if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(f'feeds/{name}/{name}_{args.peer}.key'):
         print(f'Feed and key for {name} exist')
-        client_key = f'feeds/{name}/{name}.key'
-        client_log = f'feeds/{name}/{name}.pcap'
+        client_key = f'feeds/{name}/{name}_{args.peer}.key'
+        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
     else:
         key_pair = crypto.ED25519()
         key_pair.create()
@@ -118,22 +118,22 @@ def create_feed(name):
 
         if not os.path.exists(f'feeds/{name}'):
             os.mkdir(f'feeds/{name}')
-        f = open(f'feeds/{name}/{name}.key', 'w')
+        f = open(f'feeds/{name}/{name}_{args.peer}.key', 'w')
         f.write(header)
         f.write(keys)
         f.close()
 
         try:
-            os.remove(f'feeds/{name}/{name}.pcap')
+            os.remove(f'feeds/{name}/{name}_{args.peer}.pcap')
         except:
             pass
 
-        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}.key')
-        client_feed = feed.FEED(f'feeds/{name}/{name}.pcap', fid, signer, True)
+        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}_{args.peer}.key')
+        client_feed = feed.FEED(f'feeds/{name}/{name}_{args.peer}.pcap', fid, signer, True)
 
 
-        client_log = f'feeds/{name}/{name}.pcap'
-        client_key = f'feeds/{name}/{name}.key'
+        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
+        client_key = f'feeds/{name}/{name}_{args.peer}.key'
 
 
 
@@ -314,7 +314,7 @@ if __name__ == '__main__':
     #parser.add_argument('--keyfile')
     #parser.add_argument('pcapfile', metavar='PCAPFILE')
     parser.add_argument('name')
-    parser.add_argument('peers')
+    parser.add_argument('peer')
 
     args = parser.parse_args()
 
@@ -327,7 +327,7 @@ if __name__ == '__main__':
     client_log = 'unknown'
     client_key = 'unknown'
 
-    isp_log = f'feeds/{args.peers}/{args.peers}_{args.name}.pcap' #
+    isp_log = f'feeds/{args.peer}/{args.peer}_{args.name}.pcap' #
 
 
     init()

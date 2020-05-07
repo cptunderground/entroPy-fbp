@@ -1,5 +1,7 @@
 import argparse
 import hashlib
+import json
+
 import os
 
 import cbor2
@@ -26,6 +28,8 @@ class Client():
     def to_string(self):
         return f'{self.name}, {self.client_isp_feed}, {self.isp_client_feed}, {self.isp_client_key}, {self.highest_request_ID}, {self.open_requests}'
 
+    def encode(self):
+        return self.__dict__
 
 def init():
     global client_names
@@ -102,9 +106,9 @@ def init_peer():
     isp_name = args.name
 
     for name in client_names:
-        if os.path.exists(f'feeds/{name}/{name}.pcap'):
-            # TODO Namespace
-            client_log = f'feeds/{name}/{name}.pcap'
+        if os.path.exists(f'feeds/{name}/{name}_{isp_name}.pcap'):
+
+            client_log = f'feeds/{name}/{name}_{isp_name}.pcap'
 
             logging.info(f'Feed for {name} exists')
             logging.info(f'Client-LOG:{client_log}')
@@ -309,6 +313,7 @@ def handle_request(log_entry, client: Client):
 
 
 def on_created(event):
+    # TODO init on RT
     logging.info(f"hey, {event.src_path} has been created!")
 
 
@@ -410,7 +415,16 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
+
+
+
+
     client_names = ['client01', 'client02', 'client03', 'client04']
+
+    with open('peers.json', 'w') as fp:
+        json.dump(client_names, fp)
+
+
     client_dict = dict()
 
     next_result_ID = 0
@@ -435,8 +449,18 @@ if __name__ == '__main__':
 
     start_watchdog()
 
-    print("dumping feed...")
-    pcap.dump(isp_log)
+    print("Dumping feeds...")
+    for client in client_dict.values():
+        print('------------------------------')
+        print(f'dumping feed {client.isp_client_feed}')
+        pcap.dump(client.isp_client_feed)
+
+    with open('client_dump.json', 'w') as fp:
+        dump = dict
+        for client in client_dict.values():
+
+            json.dump(client.encode(), fp)
+
     # request = handle_input(input())
 
 # TODO: Refactor
