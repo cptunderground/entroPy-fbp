@@ -114,8 +114,9 @@ class PCAP:
             raise StopIteration
         return pkt
 
+    '''
     def __reversed__(self):
-        pkt = self.read_backwards(True)
+        pkt = self.read_backwards()
         if not pkt:
             self.rd_offset = 48
             raise StopIteration
@@ -127,7 +128,7 @@ class PCAP:
             self.rd_offset = 48
             raise StopIteration
         return pkt
-
+    '''
     def write(self, pkt):
         self.f.seek(0,2)
         self._wr_typed_block(3, len(pkt).to_bytes(4,'big') + pkt)
