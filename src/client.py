@@ -13,6 +13,8 @@ import lib.feed as feed
 import lib.pcap as pcap
 import lib.crypto as crypto
 
+
+#TODO adapt regex for any python structur
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
 
@@ -30,6 +32,7 @@ def handle_input(msg):
     matching_full = re.match(full_pattern, msg)
     matching_short = re.match(short_pattern, msg)
 
+    # TODO eval attributes to python structure
     if matching_full:
         service = matching_full.group(1)
         destination = matching_full.group(2)
@@ -50,7 +53,7 @@ def handle_input(msg):
         service = matching_short.group(1)
         destination = matching_short.group(2)
         attributes_str = matching_short.group(3)
-        attributes = attributes_str.split(', ')
+        attributes = eval(attributes_str)
 
         print(
             f'Detected short: service:{service}, destination:{destination} with the following attributes:{attributes}')
@@ -58,7 +61,7 @@ def handle_input(msg):
         request = {
             'service': service,
             'destination': destination,
-            'attributes': attributes
+            'attributes': (attributes)
         }
 
         return request

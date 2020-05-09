@@ -13,6 +13,22 @@ import services
 
 import logging
 
+class Server():
+    def __init__(self, name: str, server_isp_feed: str, isp_server_feed: str, isp_server_key: str,
+                 highest_request_ID: int,
+                 open_requests: list):
+        self.name = name
+        self.server_isp_feed = server_isp_feed
+        self.isp_server_feed = isp_server_feed
+        self.isp_server_key = isp_server_key
+        self.highest_request_ID = highest_request_ID
+        self.open_requests = open_requests
+
+    def to_string(self):
+        return f'{self.name}, {self.server_isp_feed}, {self.isp_server_feed}, {self.isp_server_key}, {self.highest_request_ID}, {self.open_requests}'
+
+    def encode(self):
+        return self.__dict__
 
 class Client():
     def __init__(self, name: str, client_isp_feed: str, isp_client_feed: str, isp_client_key: str,
@@ -32,8 +48,12 @@ class Client():
         return self.__dict__
 
 def init():
+
     global client_names
     global client_dict
+
+    global server_names
+    global server_dict
 
     name = args.name
 
@@ -96,10 +116,70 @@ def init():
             fid, signer = feed.load_keyfile(isp_client_key)
             feed.FEED(isp_client_feed, fid, signer, True).write(feed_entry)
 
+            #services.announce_all_services(client_class)
+
+    for server in server_names:
+        if os.path.exists(f'feeds/{name}/{name}_{server}.pcap') and os.path.exists(
+                f'feeds/{name}/{name}_{server}.key'):
+            logging.info(f'Feed and key for {name} exist')
+            # isp to client feeds
+            isp_server_key = f'feeds/{name}/{name}_{server}.key'
+            isp_server_feed = f'feeds/{name}/{name}_{server}.pcap'
+
+            server_class = Server(server, 'unknown', isp_server_feed, isp_server_key, 0, [])
+            server_dict[server] = server_class
+            logging.info(f'ISP-FEED:{isp_server_feed}')
+            logging.info(f'ISP-KEY:{isp_server_key}')
+
+        else:
+            logging.info(f'Feed for {name} does not exist')
+            logging.info(f'Creating feed for {name}')
+            key_pair = crypto.ED25519()
+            key_pair.create()
+            header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
+            keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+            logging.warning("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+            logging.warning('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+            if not os.path.exists(f'feeds/{name}'):
+                os.mkdir(f'feeds/{name}')
+            f = open(f'feeds/{name}/{name}_{server}.key', 'w')
+            f.write(header)
+            f.write(keys)
+            f.close()
+
+            try:
+                os.remove(f'feeds/{name}/{name}_{server}.pcap')
+            except:
+                pass
+
+            isp_server_key = f'feeds/{name}/{name}_{server}.key'
+            isp_server_feed = f'feeds/{name}/{name}_{server}.pcap'
+
+            server_class = Server(server, 'unknown', isp_server_feed, isp_server_key, 0, [])
+            server_dict[server] = server_class
+
+            logging.info(f'Created Feed for {name} in {isp_server_feed}')
+            logging.info(f'Created Key for {name} in {isp_server_key}')
+
+            # TODO exchange source and dest with public keys
+            feed_entry = {
+                'ID': 0,
+                'type': 'initiation',
+                'source': name,
+                'destination': name,
+                'service': 'init',
+                'attributes': None
+            }
+
+            logging.info(f'Writing in {isp_server_feed}: {feed_entry}')
+            fid, signer = feed.load_keyfile(isp_server_key)
+            feed.FEED(isp_server_feed, fid, signer, True).write(feed_entry)
     #
 
 
-def init_peer():
+def init_clients():
     global client_dict
     global client_names
 
@@ -303,13 +383,25 @@ def read_request(log_entry: dict, client: Client):
 def handle_request(log_entry, client: Client):
     # TODO dynamic switching over destination
 
-    try:
-        logging.info(f'Evaluating service')
-        f = eval(f'services.{log_entry["service"]}')
-        result = f(log_entry['attributes'])
-        send_result(log_entry, result, client)
-    except:
-        invalid_service(log_entry, client)
+    if log_entry['service'] == 'servicecatalog':
+
+
+        try:
+            logging.info(f'Evaluating service')
+            f = eval(f'services.{log_entry["service"]}')
+            result = f(log_entry['attributes'])
+            send_result(log_entry, result, client)
+        except:
+            invalid_service(log_entry, client)
+
+    else:
+        try:
+            logging.info(f'Evaluating service')
+            f = eval(f'services.Service.{log_entry["service"]}')
+            result = f(log_entry['attributes'])
+            send_result(log_entry, result, client)
+        except:
+            invalid_service(log_entry, client)
 
 
 def on_created(event):
@@ -420,12 +512,14 @@ if __name__ == '__main__':
 
 
     client_names = ['client01', 'client02', 'client03', 'client04']
+    server_names = ['server01', 'server02', 'server03', 'server04']
 
     with open('peers.json', 'w') as fp:
         json.dump(client_names, fp)
 
 
     client_dict = dict()
+    server_dict = dict()
 
     next_result_ID = 0
     next_request_ID = 0
@@ -442,7 +536,7 @@ if __name__ == '__main__':
     logging.debug(f'Client-LOG:{client_log}')
 
     init()
-    init_peer()
+    init_clients()
 
     for cli in client_dict.values():
         print(cli.to_string())
@@ -453,7 +547,14 @@ if __name__ == '__main__':
     for client in client_dict.values():
         print('------------------------------')
         print(f'dumping feed {client.isp_client_feed}')
+        print()
         pcap.dump(client.isp_client_feed)
+
+    for server in server_dict.values():
+        print('------------------------------')
+        print(f'dumping feed {server.isp_server_feed}')
+        print()
+        pcap.dump(server.isp_server_feed)
 
     with open('client_dump.json', 'w') as fp:
         dump = dict
