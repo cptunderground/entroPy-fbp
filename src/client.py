@@ -18,7 +18,7 @@ import lib.crypto as crypto
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
 
-short_pattern = r'^--([a-zA-Z ]+) -([a-zA-Z ]+) \[(([0-9a-zA-Z ]*[0-9a-zA-Z_ ]*)([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
+short_pattern = r'^--([a-zA-Z ]+) -([a-zA-Z ]+) \[(([0-9a-zA-Z ]*[0-9a-zA-Z_\' ]*)([,][0-9a-zA-Z ][0-9a-zA-Z_\' ]*)*)\]'
 short_test_string = '--echo      -isp  [te  st, hallo welt, noweqfdnqw]'
 
 delimitor = '---------------------------------------------'
@@ -253,8 +253,17 @@ def read_result(ID):
     return False
 
 def handle_result(log_entry):
-    logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
-    logging.info(f'-> {log_entry}')
+    if log_entry['service'] == 'approved_introduce':
+        print('WORKED')
+        print('WORKED')
+        print('WORKED')
+        logging.info(f'-> {log_entry}')
+        print('WORKED')
+        print('WORKED')
+        print('WORKED')
+    else:
+        logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
+        logging.info(f'-> {log_entry}')
 
 def handle_new_results():
     logging.info('Handle new results')

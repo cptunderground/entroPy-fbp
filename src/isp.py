@@ -13,22 +13,24 @@ import services
 
 import logging
 
+
 class Server():
     def __init__(self, name: str, server_isp_feed: str, isp_server_feed: str, isp_server_key: str,
-                 highest_request_ID: int,
-                 open_requests: list):
+                 highest_introduce_ID: int,
+                 open_introduces: list):
         self.name = name
         self.server_isp_feed = server_isp_feed
         self.isp_server_feed = isp_server_feed
         self.isp_server_key = isp_server_key
-        self.highest_request_ID = highest_request_ID
-        self.open_requests = open_requests
+        self.highest_introduce_ID = highest_introduce_ID
+        self.open_introduces = open_introduces
 
     def to_string(self):
-        return f'{self.name}, {self.server_isp_feed}, {self.isp_server_feed}, {self.isp_server_key}, {self.highest_request_ID}, {self.open_requests}'
+        return f'{self.name}, {self.server_isp_feed}, {self.isp_server_feed}, {self.isp_server_key}, {self.highest_introduce_ID}, {self.open_introduces}'
 
     def encode(self):
         return self.__dict__
+
 
 class Client():
     def __init__(self, name: str, client_isp_feed: str, isp_client_feed: str, isp_client_key: str,
@@ -47,8 +49,8 @@ class Client():
     def encode(self):
         return self.__dict__
 
-def init():
 
+def init():
     global client_names
     global client_dict
 
@@ -116,7 +118,7 @@ def init():
             fid, signer = feed.load_keyfile(isp_client_key)
             feed.FEED(isp_client_feed, fid, signer, True).write(feed_entry)
 
-            #services.announce_all_services(client_class)
+            # services.announce_all_services(client_class)
 
     for server in server_names:
         if os.path.exists(f'feeds/{name}/{name}_{server}.pcap') and os.path.exists(
@@ -292,6 +294,89 @@ def init_clients():
             pass
 
 
+def init_servers():
+    global server_dict
+    global server_names
+
+    isp_name = args.name
+
+    for name in server_names:
+        if os.path.exists(f'feeds/{name}/{name}_{isp_name}.pcap'):
+
+            server_log = f'feeds/{name}/{name}_{isp_name}.pcap'
+
+            logging.info(f'Feed for {name} exists')
+            logging.info(f'server-LOG:{server_log}')
+
+            server = server_dict[name]
+            server.server_isp_feed = server_log
+            print(server_dict[name].to_string())
+
+            p = pcap.PCAP(server.isp_server_feed)
+            p.open('r')
+            for w in p:
+                # here we apply our knowledge about the event/pkt's internal struct
+                e = cbor2.loads(w)
+                href = hashlib.sha256(e[0]).digest()
+                e[0] = cbor2.loads(e[0])
+                # rewrite the packet's byte arrays for pretty printing:
+                e[0] = pcap.base64ify(e[0])
+                fid = e[0][0]
+                seq = e[0][1]
+                if e[2] != None:
+                    e[2] = cbor2.loads(e[2])
+
+                if isinstance(e[2], dict) and e[2]['type'] == 'introduce':
+                    introduce_ID = e[2]["introduce_ID"]
+
+                    logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                    logging.debug(f"   hashref={href.hex()}")
+                    logging.debug(f"   content={e[2]}")
+
+                    server.open_introduces.append(introduce_ID)
+                    server.highest_introduce_ID = max(introduce_ID, server.highest_introduce_ID)
+
+            p.close()
+
+            p = pcap.PCAP(server.server_isp_feed)
+            p.open('r')
+            for w in p:
+                # here we apply our knowledge about the event/pkt's internal struct
+                e = cbor2.loads(w)
+                href = hashlib.sha256(e[0]).digest()
+                e[0] = cbor2.loads(e[0])
+                # rewrite the packet's byte arrays for pretty printing:
+                e[0] = pcap.base64ify(e[0])
+                fid = e[0][0]
+                seq = e[0][1]
+                if e[2] != None:
+                    e[2] = cbor2.loads(e[2])
+
+                print('here')
+                if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce':
+                    introduce_ID = e[2]["introduce_ID"]
+                    logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                    logging.debug(f"   hashref={href.hex()}")
+                    logging.debug(f"   content={e[2]}")
+
+                    if server.open_introduces.__contains__(introduce_ID):
+                        server.open_introduces.remove(introduce_ID)
+                        # read_request(e[2])
+                    else:
+                        pass
+
+            p.close()
+
+
+
+
+
+        else:
+            logging.critical(f'Feed for {name} does not exist')
+
+            pass
+
+
 def send_result(log_entry, result, client: Client):
     global next_result_ID
     feed_entry = {
@@ -305,6 +390,7 @@ def send_result(log_entry, result, client: Client):
 
     logging.info(f'Sending result')
     logging.info(f'Writing in {client.isp_client_feed}: {feed_entry}')
+    client.highest_request_ID += 1
     wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
 
 
@@ -380,11 +466,80 @@ def read_request(log_entry: dict, client: Client):
         handle_request(log_entry, client)
 
 
+def read_introduce(log_entry, client: Client):
+    server = server_dict[log_entry['attributes']]
+
+    if log_entry['ID'] > client.highest_request_ID:
+
+        introduce_entry = {
+            'introduce_ID': server.highest_introduce_ID,
+            'request_ID': log_entry['ID'],
+            'request_source': client.name,
+            'debug' : log_entry['destination'],
+            'type': 'introduce',
+            'attributes': client.name
+        }
+
+        # send introduce
+        wr_feed(server.isp_server_feed, server.isp_server_key, introduce_entry)
+        server.open_introduces.append(server.highest_introduce_ID)
+        server.highest_introduce_ID += 1
+        client.highest_request_ID += 1
+    else:
+        print('ALREADY HANDLED')
+
+def handle_approved_introduce(server: Server):
+    global client_dict
+
+    p = pcap.PCAP(server.server_isp_feed)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce' and server.open_introduces.__contains__(e[2]['introduce_ID']):
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
+
+            client = client_dict[e[2]['request_source']]
+
+            result = e[2]['result']
+
+            feed_entry = {
+                'ID': e[2]['request_ID'],
+                'type': 'result',
+                'source': args.name,
+                'destination': 'does not matter',
+                'service': 'introduce',
+                'result': result,
+                'debug' : e[2]['debug']
+            }
+
+            logging.info(f'Sending INTRODUCTION result')
+            logging.info(f'Writing in {client.isp_client_feed}: {feed_entry}')
+            server.open_introduces.remove(e[2]['introduce_ID'])
+            wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
+
+    p.close()
+
+
 def handle_request(log_entry, client: Client):
     # TODO dynamic switching over destination
+    print(log_entry)
+    if log_entry['service'] == 'introduce':
+        print('INTRODUCE')
+        read_introduce(log_entry, client)
 
-    if log_entry['service'] == 'servicecatalog':
-
+    elif log_entry['service'] == 'servicecatalog':
 
         try:
             logging.info(f'Evaluating service')
@@ -419,14 +574,21 @@ def on_modified(event):
 
     global client_dict
 
-    for client in client_dict.values():
+    if 'client' in f'{event.src_path}':
 
-        if f'{event.src_path[2:]}' == client.client_isp_feed:
-            logging.info(f'Handling client incoming')
-            handle_new_requests(client)
-    if f'{event.src_path[2:]}' == server_log:
-        logging.info(f'Handling server incoming')
-        handle_new_requests(server_log)
+        for client in client_dict.values():
+
+            if f'{event.src_path[2:]}' == client.client_isp_feed:
+                logging.info(f'Handling client incoming')
+                handle_new_requests(client)
+
+    if 'server' in f'{event.src_path}':
+
+        for server in server_dict.values():
+            print(server.to_string())
+            if f'{event.src_path[2:]}' == server.server_isp_feed:
+                logging.info(f'SERVERINC')
+                handle_approved_introduce(server)
 
 
 def on_moved(event):
@@ -490,7 +652,7 @@ def start_watchdog():
     logging.debug(f'Starting observing feeds')
     try:
         while True:
-            time.sleep(10)
+            time.sleep(1)
     except KeyboardInterrupt:
         my_observer.stop()
         my_observer.join()
@@ -507,16 +669,11 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-
-
-
-
-    client_names = ['client01', 'client02', 'client03', 'client04']
-    server_names = ['server01', 'server02', 'server03', 'server04']
+    client_names = ['client']  # 01', 'client02', 'client03', 'client04']
+    server_names = ['server']  # 01', 'server02', 'server03', 'server04']
 
     with open('peers.json', 'w') as fp:
         json.dump(client_names, fp)
-
 
     client_dict = dict()
     server_dict = dict()
@@ -537,6 +694,7 @@ if __name__ == '__main__':
 
     init()
     init_clients()
+    init_servers()
 
     for cli in client_dict.values():
         print(cli.to_string())
@@ -545,6 +703,10 @@ if __name__ == '__main__':
 
     print("Dumping feeds...")
     for client in client_dict.values():
+        print('------------------------------')
+        print(f'dumping feed {client.client_isp_feed}')
+        print()
+        pcap.dump(client.client_isp_feed)
         print('------------------------------')
         print(f'dumping feed {client.isp_client_feed}')
         print()
@@ -555,11 +717,14 @@ if __name__ == '__main__':
         print(f'dumping feed {server.isp_server_feed}')
         print()
         pcap.dump(server.isp_server_feed)
+        print('------------------------------')
+        print(f'dumping feed {server.server_isp_feed}')
+        print()
+        pcap.dump(server.server_isp_feed)
 
     with open('client_dump.json', 'w') as fp:
         dump = dict
         for client in client_dict.values():
-
             json.dump(client.encode(), fp)
 
     # request = handle_input(input())
