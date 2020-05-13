@@ -101,6 +101,51 @@ def clear_await(ID):
 def wr_feed(f, key, msg):
     feed.append_feed(f, key, msg)
 
+def create_E2E_feed(identifier):
+    identifier = f'feeds/{args.name}/{identifier}'
+
+    if os.path.exists(f'{identifier}.pcap') and os.path.exists(f'{identifier}.key'):
+        print(f'Feed and key for {identifier} exist')
+        # TODO safe all introduced servers
+
+    else:
+        key_pair = crypto.ED25519()
+        key_pair.create()
+        header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
+        keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+
+        if not os.path.exists(f'feeds/{args.name}'):
+            os.mkdir(f'feeds/{args.name}')
+        f = open(f'{identifier}.key', 'w')
+        f.write(header)
+        f.write(keys)
+        f.close()
+
+        try:
+            os.remove(f'{identifier}.pcap')
+        except:
+            pass
+
+        fid, signer = feed.load_keyfile(f'{identifier}.key')
+        E2E_feed = feed.FEED(f'{identifier}.pcap', fid, signer, True)
+
+
+        # TODO exchange sourece and dest with public keys
+        feed_entry = {
+            'ID': next_request_ID,
+            'type': 'initiation',
+            'source': args.name,
+            'destination': args.name,
+            'service': 'init',
+            'attributes': 'E2E'
+        }
+
+        print(f'writing in {identifier}: {feed_entry}')
+        E2E_feed.write(feed_entry)
+
 def create_feed(name):
     global client_log
     global client_key
@@ -253,7 +298,7 @@ def read_result(ID):
     return False
 
 def handle_result(log_entry):
-    if log_entry['service'] == 'approved_introduce':
+    if log_entry['service'] == 'introduce':
         print('WORKED')
         print('WORKED')
         print('WORKED')
@@ -261,6 +306,9 @@ def handle_result(log_entry):
         print('WORKED')
         print('WORKED')
         print('WORKED')
+        if log_entry['result'] != 'already exists':
+            create_E2E_feed(log_entry['result'])
+
     else:
         logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
         logging.info(f'-> {log_entry}')
