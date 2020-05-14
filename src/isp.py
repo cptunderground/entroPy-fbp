@@ -197,7 +197,7 @@ def init_clients():
 
             client = client_dict[name]
             client.client_isp_feed = client_log
-            print(client_dict[name].to_string())
+            logging.info(client_dict[name].to_string())
 
             p = pcap.PCAP(client_log)
             p.open('r')
@@ -213,7 +213,7 @@ def init_clients():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-                print('here')
+
                 if isinstance(e[2], dict) and e[2]['type'] == 'request':
                     request_ID = e[2]["ID"]
                     logging.debug(f'ID={e[2]["ID"]}')
@@ -242,7 +242,6 @@ def init_clients():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-                print('here')
                 if isinstance(e[2], dict) and e[2]['type'] == 'result':
                     request_ID = e[2]["ID"]
                     logging.debug(f'ID={e[2]["ID"]}')
@@ -272,7 +271,7 @@ def init_clients():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-                print('here')
+
                 if isinstance(e[2], dict) and e[2]['type'] == 'request':
                     request_ID = e[2]["ID"]
                     logging.debug(f'ID={e[2]["ID"]}')
@@ -280,7 +279,6 @@ def init_clients():
                     logging.debug(f"   hashref={href.hex()}")
                     logging.debug(f"   content={e[2]}")
 
-                    print(f'req id {request_ID}')
                     if client.open_requests.__contains__(request_ID):
                         read_request(e[2], client)
 
@@ -310,7 +308,7 @@ def init_servers():
 
             server = server_dict[name]
             server.server_isp_feed = server_log
-            print(server_dict[name].to_string())
+            logging.info(server_dict[name].to_string())
 
             p = pcap.PCAP(server.isp_server_feed)
             p.open('r')
@@ -352,7 +350,7 @@ def init_servers():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-                print('here')
+
                 if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce':
                     introduce_ID = e[2]["introduce_ID"]
                     logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
@@ -388,8 +386,8 @@ def send_result(log_entry, result, client: Client):
         'result': result
     }
 
-    logging.info(f'Sending result')
-    logging.info(f'Writing in {client.isp_client_feed}: {feed_entry}')
+
+    logging.info(f'Sending result - writing in {client.isp_client_feed}:\n {feed_entry}')
     client.highest_request_ID += 1
     wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
 
@@ -409,7 +407,7 @@ def send_request(request: dict):
     }
     next_request_ID += 1
 
-    print(f'writing in {isp_log}: {feed_entry}')
+    logging.info(f'writing in {isp_log}:\n{feed_entry}')
     wr_feed(isp_log, isp_key, feed_entry)
     await_result(feed_entry['ID'])
 
@@ -431,6 +429,10 @@ def wr_feed(f, key, msg):
 def send_invalid_result(log_entry, error, client: Client):
     send_result(log_entry, f'Invalid request - source:{error}', client)
 
+def invalid_server(log_entry, client: Client):
+    logging.warning("INVALID SERVER")
+    logging.debug(log_entry)
+    send_invalid_result(log_entry, 'server', client)
 
 def invalid_format(log_entry, client: Client):
     logging.warning("INVALID LOG ENTRY")
@@ -451,7 +453,6 @@ def invalid_destination(log_entry, client: Client):
 
 
 def read_request(log_entry: dict, client: Client):
-    logging.info(log_entry['ID'])
     if log_entry['ID'] == None:
         invalid_format(log_entry, client)
     elif log_entry['type'] == None:
@@ -467,8 +468,10 @@ def read_request(log_entry: dict, client: Client):
 
 
 def read_introduce(log_entry, client: Client):
-    server = server_dict[log_entry['attributes']]
-
+    try:
+        server = server_dict[log_entry['attributes']]
+    except:
+        invalid_server(log_entry, client)
     if log_entry['ID'] > client.highest_request_ID:
 
         introduce_entry = {
@@ -486,7 +489,7 @@ def read_introduce(log_entry, client: Client):
         server.highest_introduce_ID += 1
         client.highest_request_ID += 1
     else:
-        print('ALREADY HANDLED')
+        logging.debug(f'ALREADY HANDLED: {log_entry}')
 
 def handle_approved_introduce(server: Server):
     global client_dict
@@ -525,7 +528,8 @@ def handle_approved_introduce(server: Server):
             }
 
             logging.info(f'Sending INTRODUCTION result')
-            logging.info(f'Writing in {client.isp_client_feed}: {feed_entry}')
+            logging.info(f'Writing in {client.isp_client_feed}:\n'
+                         f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
 
@@ -534,15 +538,15 @@ def handle_approved_introduce(server: Server):
 
 def handle_request(log_entry, client: Client):
     # TODO dynamic switching over destination
-    print(log_entry)
+    logging.debug(log_entry)
     if log_entry['service'] == 'introduce':
-        print('INTRODUCE')
+        logging.debug('INTRODUCE')
         read_introduce(log_entry, client)
 
     elif log_entry['service'] == 'servicecatalog':
 
         try:
-            logging.info(f'Evaluating service')
+            logging.debug(f'Evaluating service')
             f = eval(f'services.{log_entry["service"]}')
             result = f(log_entry['attributes'])
             send_result(log_entry, result, client)
@@ -551,7 +555,7 @@ def handle_request(log_entry, client: Client):
 
     else:
         try:
-            logging.info(f'Evaluating service')
+            logging.debug(f'Evaluating service')
             f = eval(f'services.Service.{log_entry["service"]}')
             result = f(log_entry['attributes'])
             send_result(log_entry, result, client)
@@ -561,16 +565,16 @@ def handle_request(log_entry, client: Client):
 
 def on_created(event):
     # TODO init on RT
-    logging.info(f"hey, {event.src_path} has been created!")
+    logging.debug(f"created: {event.src_path}")
 
 
 def on_deleted(event):
-    logging.critical(f"what the f**k! Someone deleted {event.src_path}!")
+    logging.critical(f"deleted: {event.src_path}")
 
 
 def on_modified(event):
     # TODO Regex to check if it is feed file and then handle over feed file
-    logging.info(f"Feed update:{event.src_path}")
+    logging.debug(f"Feed update:{event.src_path}")
 
     global client_dict
 
@@ -585,7 +589,7 @@ def on_modified(event):
     if 'server' in f'{event.src_path}':
 
         for server in server_dict.values():
-            print(server.to_string())
+            logging.debug(server.to_string())
             if f'{event.src_path[2:]}' == server.server_isp_feed:
                 logging.info(f'SERVERINC')
                 handle_approved_introduce(server)
@@ -617,8 +621,6 @@ def handle_new_requests(client: Client):
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
 
-            # TODO handle IDs
-            logging.info(f'request ID {request_ID}  next res {next_result_ID}')
             if request_ID > client.highest_request_ID:
                 read_request(e[2], client)
             elif client.open_requests.__contains__(request_ID):
@@ -669,8 +671,8 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-    client_names = ['client']  # 01', 'client02', 'client03', 'client04']
-    server_names = ['server']  # 01', 'server02', 'server03', 'server04']
+    client_names = ['client01', 'client02', 'client03', 'client04']
+    server_names = ['server01', 'server02', 'server03', 'server04']
 
     with open('peers.json', 'w') as fp:
         json.dump(client_names, fp)
@@ -697,29 +699,29 @@ if __name__ == '__main__':
     init_servers()
 
     for cli in client_dict.values():
-        print(cli.to_string())
+        logging.info(cli.to_string())
 
     start_watchdog()
 
-    print("Dumping feeds...")
+    logging.info("Dumping feeds...")
     for client in client_dict.values():
-        print('------------------------------')
-        print(f'dumping feed {client.client_isp_feed}')
-        print()
+        logging.info('------------------------------')
+        logging.info(f'dumping feed {client.client_isp_feed}')
+        logging.info('')
         pcap.dump(client.client_isp_feed)
-        print('------------------------------')
-        print(f'dumping feed {client.isp_client_feed}')
-        print()
+        logging.info('------------------------------')
+        logging.info(f'dumping feed {client.isp_client_feed}')
+        logging.info('')
         pcap.dump(client.isp_client_feed)
 
     for server in server_dict.values():
-        print('------------------------------')
-        print(f'dumping feed {server.isp_server_feed}')
-        print()
+        logging.info('------------------------------')
+        logging.info(f'dumping feed {server.isp_server_feed}')
+        logging.info('')
         pcap.dump(server.isp_server_feed)
-        print('------------------------------')
-        print(f'dumping feed {server.server_isp_feed}')
-        print()
+        logging.info('------------------------------')
+        logging.info(f'dumping feed {server.server_isp_feed}')
+        logging.info('')
         pcap.dump(server.server_isp_feed)
 
     with open('client_dump.json', 'w') as fp:

@@ -13,8 +13,7 @@ import lib.feed as feed
 import lib.pcap as pcap
 import lib.crypto as crypto
 
-
-#TODO adapt regex for any python structur
+# TODO adapt regex for any python structur
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
 
@@ -24,10 +23,22 @@ short_test_string = '--echo      -isp  [te  st, hallo welt, noweqfdnqw]'
 delimitor = '---------------------------------------------'
 
 
+class cServer():
+    def __init__(self, name: str, s_c_feed: str, c_s_feed: str, c_s_key: str,
+                 highest_introduce_ID: int,
+                 open_introduces: list):
+        self.name = name
+        self.s_c_feed = s_c_feed
+        self.c_s_feed = c_s_feed
+        self.c_s_key = c_s_key
+        self.highest_introduce_ID = highest_introduce_ID
+        self.open_introduces = open_introduces
+
+
 def handle_input(msg):
     if not isinstance(msg, str):
         msg = str(msg.decode('utf8'))
-    print(f'msg: {msg}')
+    logging.debug(f'msg: {msg}')
 
     matching_full = re.match(full_pattern, msg)
     matching_short = re.match(short_pattern, msg)
@@ -39,7 +50,8 @@ def handle_input(msg):
         attributes_str = matching_full.group(3)
         attributes = attributes_str.split(', ')
 
-        print(f'Detected full: service:{service}, destination:{destination} with the following attributes:{attributes}')
+        logging.debug(
+            f'Detected full: service:{service}, destination:{destination} with the following attributes:{attributes}')
 
         request = {
             'service': service,
@@ -55,7 +67,7 @@ def handle_input(msg):
         attributes_str = matching_short.group(3)
         attributes = eval(attributes_str)
 
-        print(
+        logging.debug(
             f'Detected short: service:{service}, destination:{destination} with the following attributes:{attributes}')
 
         request = {
@@ -66,7 +78,7 @@ def handle_input(msg):
 
         return request
     else:
-        print('Input not matching pattern')
+        logging.warning('Input not matching pattern')
         # win.addstr(f"failed post({msg})")
 
 
@@ -85,7 +97,7 @@ def send_request(request: dict):
     }
     next_request_ID += 1
 
-    print(f'writing in {client_log}: {feed_entry}')
+    logging.info(f'Writing in {client_log}: {feed_entry}')
     wr_feed(client_log, client_key, feed_entry)
     await_result(feed_entry['ID'])
 
@@ -94,18 +106,23 @@ def await_result(ID):
     global result_ID_list
     result_ID_list.append(ID)
 
+
 def clear_await(ID):
     global result_ID_list
     result_ID_list.remove(ID)
 
+
 def wr_feed(f, key, msg):
     feed.append_feed(f, key, msg)
 
+
 def create_E2E_feed(identifier):
+    global c_server_dict
+    res = identifier
     identifier = f'feeds/{args.name}/{identifier}'
 
     if os.path.exists(f'{identifier}.pcap') and os.path.exists(f'{identifier}.key'):
-        print(f'Feed and key for {identifier} exist')
+        logging.info(f'Feed and key for {identifier} exist')
         # TODO safe all introduced servers
 
     else:
@@ -114,8 +131,8 @@ def create_E2E_feed(identifier):
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         if not os.path.exists(f'feeds/{args.name}'):
             os.mkdir(f'feeds/{args.name}')
@@ -132,7 +149,6 @@ def create_E2E_feed(identifier):
         fid, signer = feed.load_keyfile(f'{identifier}.key')
         E2E_feed = feed.FEED(f'{identifier}.pcap', fid, signer, True)
 
-
         # TODO exchange sourece and dest with public keys
         feed_entry = {
             'ID': next_request_ID,
@@ -142,17 +158,25 @@ def create_E2E_feed(identifier):
             'service': 'init',
             'attributes': 'E2E'
         }
+        name_gen = res.split('_')
+        server_name = name_gen[2]
+        client_name = args.name
 
-        print(f'writing in {identifier}: {feed_entry}')
+        s_c = f'feeds/{server_name}/E2E_{server_name}_{client_name}.pcap'
+        c_server_dict[s_c] = cServer(server_name, s_c, f'{identifier}.pcap', f'{identifier}.key', 0, [])
+
+        logging.info(f'writing in {identifier}: {feed_entry}')
         E2E_feed.write(feed_entry)
+
 
 def create_feed(name):
     global client_log
     global client_key
     global next_request_ID
 
-    if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(f'feeds/{name}/{name}_{args.peer}.key'):
-        print(f'Feed and key for {name} exist')
+    if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(
+            f'feeds/{name}/{name}_{args.peer}.key'):
+        logging.info(f'Feed and key for {name} exist')
         client_key = f'feeds/{name}/{name}_{args.peer}.key'
         client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
     else:
@@ -161,8 +185,8 @@ def create_feed(name):
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         if not os.path.exists(f'feeds/{name}'):
             os.mkdir(f'feeds/{name}')
@@ -179,11 +203,8 @@ def create_feed(name):
         fid, signer = feed.load_keyfile(f'feeds/{name}/{name}_{args.peer}.key')
         client_feed = feed.FEED(f'feeds/{name}/{name}_{args.peer}.pcap', fid, signer, True)
 
-
         client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
         client_key = f'feeds/{name}/{name}_{args.peer}.key'
-
-
 
         # TODO exchange sourece and dest with public keys
         feed_entry = {
@@ -196,9 +217,8 @@ def create_feed(name):
         }
         next_request_ID += 1
 
-        print(f'writing in {client_log}: {feed_entry}')
+        logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
-
 
 
 def init():
@@ -206,11 +226,9 @@ def init():
     global highest_result_ID
     global result_ID_list
 
-    print(client_log)
-
     create_feed(args.name)
 
-    print('Reading Feed...')
+    logging.info('Initialising from feeds...')
     p = pcap.PCAP(client_log)
     p.open('r')
     for w in p:
@@ -224,14 +242,14 @@ def init():
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
-        #print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-        #print(f"   hashref={href.hex()}")
-        #print(f"   content={e[2]}")
+        # print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+        # print(f"   hashref={href.hex()}")
+        # print(f"   content={e[2]}")
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             logging.debug(f'from init request  ID={e[2]["ID"]}')
             await_result(e[2]['ID'])
-            next_request_ID = max(int(e[2]["ID"]),next_request_ID)
+            next_request_ID = max(int(e[2]["ID"]), next_request_ID)
 
     next_request_ID += 1
     p.close()
@@ -250,7 +268,6 @@ def init():
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
-
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
             if result_ID_list.__contains__(e[2]['ID']):
                 logging.debug(f'from init result  ID={e[2]["ID"]}')
@@ -261,8 +278,8 @@ def init():
 
     p.close()
 
-
     pass
+
 
 def read_result(ID):
     global result_ID_list
@@ -297,21 +314,23 @@ def read_result(ID):
     p.close()
     return False
 
+
+def setup_server(log_entry):
+    pass
+
+
 def handle_result(log_entry):
     if log_entry['service'] == 'introduce':
-        print('WORKED')
-        print('WORKED')
-        print('WORKED')
+        logging.info(f'Got introduce result from ID:{log_entry["ID"]}')
         logging.info(f'-> {log_entry}')
-        print('WORKED')
-        print('WORKED')
-        print('WORKED')
+
         if log_entry['result'] != 'already exists':
             create_E2E_feed(log_entry['result'])
-
+            setup_server(log_entry)
     else:
         logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
         logging.info(f'-> {log_entry}')
+
 
 def handle_new_results():
     logging.info('Handle new results')
@@ -319,19 +338,24 @@ def handle_new_results():
     for result_ID in result_ID_list:
         read_result(result_ID)
 
+
 def on_created(event):
-    logging.info(f"hey, {event.src_path} has been created!")
+    logging.debug(f"Created: {event.src_path}")
+
 
 def on_deleted(event):
-    logging.info(f"what the f**k! Someone deleted {event.src_path}!")
+    logging.critical(f"Deleted: {event.src_path}!")
+
 
 def on_modified(event):
-    logging.info(f"hey buddy, {event.src_path} has been modified")
+    logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path[2:]}' == isp_log:
         handle_new_results()
 
+
 def on_moved(event):
-    logging.info(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    logging.critical(f"Moved: {event.src_path} to {event.dest_path}")
+
 
 def start_watchdog():
     import time
@@ -371,8 +395,8 @@ def start_watchdog():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
-    #parser.add_argument('--keyfile')
-    #parser.add_argument('pcapfile', metavar='PCAPFILE')
+    # parser.add_argument('--keyfile')
+    # parser.add_argument('pcapfile', metavar='PCAPFILE')
     parser.add_argument('name')
     parser.add_argument('peer')
 
@@ -380,15 +404,15 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-
     next_request_ID = 0
     highest_result_ID = 0
     result_ID_list = []
     client_log = 'unknown'
     client_key = 'unknown'
 
-    isp_log = f'feeds/{args.peer}/{args.peer}_{args.name}.pcap' #
+    isp_log = f'feeds/{args.peer}/{args.peer}_{args.name}.pcap'  #
 
+    c_server_dict = dict()
 
     init()
 
@@ -396,9 +420,7 @@ if __name__ == '__main__':
 
     request = {}
 
-
-
-    #request = handle_input(input())
+    # request = handle_input(input())
     line_in = []
     line_in.append('--echo -isp [The echo]')
     line_in.append('--echo -isp [An, echo, list]')
@@ -416,13 +438,8 @@ if __name__ == '__main__':
         else:
             print('')'''
 
-
     logging.info('dumping feed...')
     pcap.dump(client_log)
 
 # TODO: Refactor
 # TODO: Logging
-
-
-
-

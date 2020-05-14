@@ -14,6 +14,15 @@ import lib.pcap as pcap
 import lib.crypto as crypto
 
 
+class sClient():
+    def __init__(self, name, E2E_c_s_log, E2E_s_c_log, E2E_s_c_key, highest_request_ID, open_requests):
+        self.name = name
+        self.E2E_c_s_log = E2E_c_s_log
+        self.E2E_s_c_log = E2E_s_c_log
+        self.E2E_s_c_key = E2E_s_c_key
+        self.highest_request_ID = highest_request_ID
+        self.open_requests = open_requests
+
 def send_request(request: dict):
     global next_request_ID
     global client_log
@@ -29,7 +38,7 @@ def send_request(request: dict):
     }
     next_request_ID += 1
 
-    print(f'writing in {client_log}: {feed_entry}')
+    logging.info(f'writing in {client_log}: {feed_entry}')
     wr_feed(client_log, client_key, feed_entry)
     await_result(feed_entry['ID'])
 
@@ -55,7 +64,7 @@ def create_feed(name):
 
     if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(
             f'feeds/{name}/{name}_{args.peer}.key'):
-        print(f'Feed and key for {name} exist')
+        logging.info(f'Feed and key for {name} exist')
         client_key = f'feeds/{name}/{name}_{args.peer}.key'
         client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
     else:
@@ -64,8 +73,8 @@ def create_feed(name):
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         if not os.path.exists(f'feeds/{name}'):
             os.mkdir(f'feeds/{name}')
@@ -96,7 +105,7 @@ def create_feed(name):
         }
         next_request_ID += 1
 
-        print(f'writing in {client_log}: {feed_entry}')
+        logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
 
 
@@ -109,7 +118,7 @@ def init():
 
     if os.path.exists(f'feeds/{args.server_name}/{args.server_name}_{args.isp_name}.pcap') and os.path.exists(
             f'feeds/{args.server_name}/{args.server_name}_{args.isp_name}.key'):
-        print(f'Feed and key for {args.server_name} exist')
+        logging.info(f'Feed and key for {args.server_name} exist')
         server_key = f'feeds/{args.server_name}/{args.server_name}_{args.isp_name}.key'
         server_log = f'feeds/{args.server_name}/{args.server_name}_{args.isp_name}.pcap'
     else:
@@ -118,8 +127,8 @@ def init():
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         if not os.path.exists(f'feeds/{args.server_name}'):
             os.mkdir(f'feeds/{args.server_name}')
@@ -148,12 +157,12 @@ def init():
             'attributes': args.server_name
         }
 
-        print(f'writing in {server_log}: {feed_entry}')
+        logging.info(f'writing in {server_log}: {feed_entry}')
         server_feed.write(feed_entry)
 
     # TODO Init on already introduced clients
 
-    print('Reading Feed...')
+    logging.info('Initialising from feed...')
     p = pcap.PCAP(isp_log)
     p.open('r')
     for w in p:
@@ -294,7 +303,7 @@ def send_result(log_entry, result):
         'request_source': log_entry['request_source'],
         'type': 'approved_introduce',
         'result': result,
-        'debug' : log_entry['debug']
+        'debug': log_entry['debug']
     }
 
     logging.info(f'Sending result')
@@ -302,10 +311,13 @@ def send_result(log_entry, result):
     wr_feed(server_log, server_key, introduce_entry)
     highest_introduce_ID += 1
 
+
 def create_e2e_feed(name):
+    global s_client_dict
+
     if os.path.exists(f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.pcap') and os.path.exists(
             f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.key'):
-        print(f'E2E feed between {args.server_name} and {name} already exist')
+        logging.info(f'E2E feed between {args.server_name} and {name} already exist')
         return 'already exists'
     else:
         key_pair = crypto.ED25519()
@@ -313,8 +325,8 @@ def create_e2e_feed(name):
         header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
         keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        print("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-        print('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
+        logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
+        logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
         f = open(f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.key', 'w')
         f.write(header)
@@ -341,30 +353,34 @@ def create_e2e_feed(name):
             'attributes': 'E2E'
         }
 
-        print(f'writing in {E2E_server_log}: {feed_entry}')
+        logging.info(f'writing in {E2E_server_log}: {feed_entry}')
         E2E_server_feed.write(feed_entry)
 
         client_e2e_identifier = f'E2E_{name}_{args.server_name}'
+
+        c_s = f'feeds/{name}/{client_e2e_identifier}.pcap'
+        s_client_dict[c_s] = sClient(name, c_s,E2E_server_log, E2E_server_key, 0, [])
+        logging.info(s_client_dict[c_s])
 
         return client_e2e_identifier
 
 
 def on_created(event):
-    logging.info(f"hey, {event.src_path} has been created!")
+    logging.debug(f"Created {event.src_path}")
 
 
 def on_deleted(event):
-    logging.info(f"what the f**k! Someone deleted {event.src_path}!")
+    logging.critical(f"Deleted: {event.src_path}!")
 
 
 def on_modified(event):
-    logging.info(f"hey buddy, {event.src_path} has been modified")
+    logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path[2:]}' == isp_log:
         handle_introduction()
 
 
 def on_moved(event):
-    logging.info(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    logging.critical(f"Moved: {event.src_path} to {event.dest_path}")
 
 
 def start_watchdog():
@@ -413,11 +429,11 @@ if __name__ == '__main__':
     highest_introduce_ID = 0
     approved = []
 
+    s_client_dict = dict()
+
     isp_log = f'feeds/{args.isp_name}/{args.isp_name}_{args.server_name}.pcap'  #
 
     init()
-
-    logging.info("TEST")
 
     request = {}
 

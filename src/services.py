@@ -4,7 +4,12 @@ from isp import Client
 
 class Service():
     def testservice(attributes):
-        return 'testanswer'
+        '''
+        This service is just a testing service. It returns 0 on any given param.
+        :param attributes: Any
+        :return: 0
+        '''
+        return 0
 
     def echo(attributes):
         '''
@@ -32,14 +37,17 @@ class Service():
             return sum
         else:
 
-            Service.invalid_attributes(attributes)
+            Service.invalid_attributes('add', attributes)
 
-    def invalid_attributes(attributes):
-        pass
+    def invalid_attributes(src, attributes):
+        '''
+        If a service is invoked with poorly chosen attributes, it passes these here and an error message gets returned.
+        :param attributes: Any
+        :return: Error
+        '''
+        return f'Error in attributes: {attributes} for service: {src}'
 
-    def announce_all_services():
-        print(locals())
-        print(eval('dir()'))
+
 
 def servicecatalog(attributes):
     '''
