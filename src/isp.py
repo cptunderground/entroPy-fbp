@@ -671,8 +671,9 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-    client_names = ['client01', 'client02', 'client03', 'client04']
-    server_names = ['server01', 'server02', 'server03', 'server04']
+    #TODO config file
+    client_names = ['client']#01', 'client02', 'client03', 'client04']
+    server_names = ['server']#01', 'server02', 'server03', 'server04']
 
     with open('peers.json', 'w') as fp:
         json.dump(client_names, fp)

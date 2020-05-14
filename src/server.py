@@ -23,34 +23,8 @@ class sClient():
         self.highest_request_ID = highest_request_ID
         self.open_requests = open_requests
 
-def send_request(request: dict):
-    global next_request_ID
-    global client_log
-    global client_key
-    # TODO exchange sourece and dest with public keys
-    feed_entry = {
-        'ID': next_request_ID,
-        'type': 'request',
-        'source': args.name,
-        'destination': request['destination'],
-        'service': request['service'],
-        'attributes': request['attributes']
-    }
-    next_request_ID += 1
-
-    logging.info(f'writing in {client_log}: {feed_entry}')
-    wr_feed(client_log, client_key, feed_entry)
-    await_result(feed_entry['ID'])
-
-
-def await_result(ID):
-    global result_ID_list
-    result_ID_list.append(ID)
-
-
-def clear_await(ID):
-    global result_ID_list
-    result_ID_list.remove(ID)
+    def to_string(self):
+        return f'{self.name}, {self.E2E_c_s_log}, {self.E2E_s_c_log}, {self.E2E_s_c_key}, {self.highest_request_ID}, {self.open_requests}'
 
 
 def wr_feed(f, key, msg):
@@ -207,10 +181,109 @@ def init():
         if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce':
             logging.debug(f'from init request  ID={e[2]["introduce_ID"]}')
             approved.append(e[2]['introduce_ID'])
+            if e[2]['result'] != 'already exists':
+                add_client(e[2])
 
     p.close()
 
+    for c in s_client_dict.values():
+        client_log = c.E2E_c_s_log
+        p = pcap.PCAP(client_log)
+        p.open('r')
+        for w in p:
+            # here we apply our knowledge about the event/pkt's internal struct
+            e = cbor2.loads(w)
+            href = hashlib.sha256(e[0]).digest()
+            e[0] = cbor2.loads(e[0])
+            # rewrite the packet's byte arrays for pretty printing:
+            e[0] = pcap.base64ify(e[0])
+            fid = e[0][0]
+            seq = e[0][1]
+            if e[2] != None:
+                e[2] = cbor2.loads(e[2])
+
+            if isinstance(e[2], dict) and e[2]['type'] == 'request':
+                request_ID = e[2]["ID"]
+                logging.debug(f'ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+
+                c.open_requests.append(request_ID)
+                c.highest_request_ID = max(request_ID, c.highest_request_ID)
+
+        p.close()
+
+
+        p = pcap.PCAP(c.E2E_s_c_log)
+        p.open('r')
+        for w in p:
+            # here we apply our knowledge about the event/pkt's internal struct
+            e = cbor2.loads(w)
+            href = hashlib.sha256(e[0]).digest()
+            e[0] = cbor2.loads(e[0])
+            # rewrite the packet's byte arrays for pretty printing:
+            e[0] = pcap.base64ify(e[0])
+            fid = e[0][0]
+            seq = e[0][1]
+            if e[2] != None:
+                e[2] = cbor2.loads(e[2])
+
+            if isinstance(e[2], dict) and e[2]['type'] == 'result':
+                request_ID = e[2]["ID"]
+                logging.debug(f'ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+
+                if c.open_requests.__contains__(e[2]['ID']):
+                    c.open_requests.remove(e[2]['ID'])
+                    # read_request(e[2])
+                else:
+                    pass
+
+        p.close()
+
+        p = pcap.PCAP(client_log)
+        p.open('r')
+        for w in p:
+            # here we apply our knowledge about the event/pkt's internal struct
+            e = cbor2.loads(w)
+            href = hashlib.sha256(e[0]).digest()
+            e[0] = cbor2.loads(e[0])
+            # rewrite the packet's byte arrays for pretty printing:
+            e[0] = pcap.base64ify(e[0])
+            fid = e[0][0]
+            seq = e[0][1]
+            if e[2] != None:
+                e[2] = cbor2.loads(e[2])
+
+            if isinstance(e[2], dict) and e[2]['type'] == 'request':
+                request_ID = e[2]["ID"]
+                logging.debug(f'ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+
+                if c.open_requests.__contains__(request_ID):
+                    read_c_request(e[2], c)
+
+        p.close()
+
     pass
+
+
+def add_client(log_entry):
+    name = log_entry['request_source']
+    E2E_server_log = f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.pcap'
+    E2E_server_key = f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.key'
+
+    client_e2e_identifier = f'E2E_{name}_{args.server_name}'
+
+    c_s = f'feeds/{name}/{client_e2e_identifier}.pcap'
+    s_client_dict[c_s] = sClient(name, c_s, E2E_server_log, E2E_server_key, 0, [])
+    sC = s_client_dict[c_s]
+    logging.info(sC.to_string())
 
 
 def read_result(ID):
@@ -359,8 +432,8 @@ def create_e2e_feed(name):
         client_e2e_identifier = f'E2E_{name}_{args.server_name}'
 
         c_s = f'feeds/{name}/{client_e2e_identifier}.pcap'
-        s_client_dict[c_s] = sClient(name, c_s,E2E_server_log, E2E_server_key, 0, [])
-        logging.info(s_client_dict[c_s])
+        s_client_dict[c_s] = sClient(name, c_s, E2E_server_log, E2E_server_key, 0, [])
+        logging.info(s_client_dict[c_s].to_string())
 
         return client_e2e_identifier
 
@@ -374,9 +447,74 @@ def on_deleted(event):
 
 
 def on_modified(event):
+    global s_client_dict
     logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path[2:]}' == isp_log:
         handle_introduction()
+    else:
+        try:
+            c = s_client_dict[f'{event.src_path[2:]}']
+            read_c_request(c)
+            logging.info('works')
+        except:
+            logging.warning(s_client_dict)
+            logging.warning(f'{event.src_path[2:]}')
+            logging.warning('file not connected to server changed')
+
+
+
+def read_c_request(client: sClient):
+    p = pcap.PCAP(client.E2E_c_s_log)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            request_ID = e[2]["ID"]
+            logging.debug(f'ID={e[2]["ID"]}')
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
+
+            if request_ID > client.highest_request_ID:
+                handle_request(e[2], client)
+            elif client.open_requests.__contains__(request_ID):
+                client.open_requests.remove(request_ID)
+                handle_request(e[2], client)
+
+    p.close()
+
+
+def handle_request(log_entry, client: sClient):
+    # TODO implement services
+    print('got')
+    result = 'got it'
+    send_c_result(log_entry, result, client)
+
+
+def send_c_result(log_entry, result, client: sClient):
+    global next_result_ID
+    feed_entry = {
+        'ID': log_entry['ID'],
+        'type': 'result',
+        'source': args.server_name,
+        'destination': log_entry['source'],
+        'service': log_entry['service'],
+        'result': result
+    }
+
+    logging.info(f'Sending result - writing in {client.E2E_c_s_log}:\n {feed_entry}')
+    client.highest_request_ID += 1
+    wr_feed(client.E2E_s_c_log, client.E2E_s_c_key, feed_entry)
 
 
 def on_moved(event):
@@ -435,7 +573,8 @@ if __name__ == '__main__':
 
     init()
 
-    request = {}
+    for c in s_client_dict.values():
+        logging.info(c.to_string())
 
     start_watchdog()
 

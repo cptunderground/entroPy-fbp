@@ -78,15 +78,30 @@ def handle_input(msg):
 
         return request
     else:
-        logging.warning('Input not matching pattern')
+        if msg.lower() == 'refresh':
+            logging.info('Refreshing')
+            refresh()
+        else:
+            logging.warning('Input not matching pattern')
         # win.addstr(f"failed post({msg})")
 
+def refresh():
+    global c_server_dict
+
+    handle_new_results()
+
+    for s in c_server_dict.values():
+        handle_new_s_results(s)
+    pass
 
 def send_request(request: dict):
     global next_request_ID
     global client_log
     global client_key
+
+    global c_server_dict
     # TODO exchange sourece and dest with public keys
+
     feed_entry = {
         'ID': next_request_ID,
         'type': 'request',
@@ -95,13 +110,26 @@ def send_request(request: dict):
         'service': request['service'],
         'attributes': request['attributes']
     }
-    next_request_ID += 1
-
-    logging.info(f'Writing in {client_log}: {feed_entry}')
-    wr_feed(client_log, client_key, feed_entry)
-    await_result(feed_entry['ID'])
 
 
+
+
+    if str(request['destination']).lower() == 'isp':
+        wr_feed(client_log, client_key, feed_entry)
+        await_result(feed_entry['ID'])
+        next_request_ID += 1
+    else:
+        #TODO optimize
+        if len(c_server_dict) != 0:
+            for server in c_server_dict.values():
+                if str(request['destination']).lower() == server.name:
+                    wr_feed(server.c_s_feed, server.c_s_key, feed_entry)
+                    await_result(feed_entry['ID'])
+                    next_request_ID += 1
+                else:
+                    logging.warning(f'No server registered for {request["destination"]}, try to introduce first')
+        else:
+            logging.info('No servers registered')
 def await_result(ID):
     global result_ID_list
     result_ID_list.append(ID)
@@ -113,6 +141,7 @@ def clear_await(ID):
 
 
 def wr_feed(f, key, msg):
+    logging.info(f'Writing in {f}: {msg}')
     feed.append_feed(f, key, msg)
 
 
@@ -123,6 +152,14 @@ def create_E2E_feed(identifier):
 
     if os.path.exists(f'{identifier}.pcap') and os.path.exists(f'{identifier}.key'):
         logging.info(f'Feed and key for {identifier} exist')
+
+        name_gen = res.split('_')
+        server_name = name_gen[2]
+        client_name = args.name
+
+        s_c = f'feeds/{server_name}/E2E_{server_name}_{client_name}.pcap'
+        c_server_dict[s_c] = cServer(server_name, s_c, f'{identifier}.pcap', f'{identifier}.key', 0, [])
+        logging.info(f'Adding {s_c} to server dict')
         # TODO safe all introduced servers
 
     else:
@@ -151,7 +188,6 @@ def create_E2E_feed(identifier):
 
         # TODO exchange sourece and dest with public keys
         feed_entry = {
-            'ID': next_request_ID,
             'type': 'initiation',
             'source': args.name,
             'destination': args.name,
@@ -251,7 +287,7 @@ def init():
             await_result(e[2]['ID'])
             next_request_ID = max(int(e[2]["ID"]), next_request_ID)
 
-    next_request_ID += 1
+
     p.close()
 
     p = pcap.PCAP(isp_log)
@@ -274,12 +310,75 @@ def init():
                 logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
                 logging.debug(f"   hashref={href.hex()}")
                 logging.debug(f"   content={e[2]}")
+
                 read_result(e[2]['ID'])
+
+
 
     p.close()
 
+    for s in c_server_dict.values():
+        p = pcap.PCAP(s.c_s_feed)
+        p.open('r')
+        for w in p:
+            # here we apply our knowledge about the event/pkt's internal struct
+            e = cbor2.loads(w)
+            href = hashlib.sha256(e[0]).digest()
+            e[0] = cbor2.loads(e[0])
+            # rewrite the packet's byte arrays for pretty printing:
+            e[0] = pcap.base64ify(e[0])
+            fid = e[0][0]
+            seq = e[0][1]
+            if e[2] != None:
+                e[2] = cbor2.loads(e[2])
+            # print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            # print(f"   hashref={href.hex()}")
+            # print(f"   content={e[2]}")
+
+            if isinstance(e[2], dict) and e[2]['type'] == 'request':
+                logging.debug(f'from init request  ID={e[2]["ID"]}')
+                await_result(e[2]['ID'])
+                next_request_ID = max(int(e[2]["ID"]), next_request_ID)
+
+        p.close()
+
+    next_request_ID += 1
+    logging.info(f'Highest ID: {next_request_ID}')
     pass
 
+def add_server(identifier):
+    pass
+
+def read_c_result(ID, server:cServer):
+    global result_ID_list
+
+    p = pcap.PCAP(server.s_c_feed)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'result':
+            if e[2]['ID'] == ID:
+                logging.debug(f'from read_result  ID={e[2]["ID"]}')
+                logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+                logging.debug(f"   hashref={href.hex()}")
+                logging.debug(f"   content={e[2]}")
+                if result_ID_list.__contains__(ID):
+                    clear_await(ID)
+                handle_result(e[2])
+                return True
+
+    p.close()
+    return False
 
 def read_result(ID):
     global result_ID_list
@@ -338,6 +437,10 @@ def handle_new_results():
     for result_ID in result_ID_list:
         read_result(result_ID)
 
+def handle_new_s_results(server:cServer):
+    global result_ID_list
+    for result_ID in result_ID_list:
+        read_c_result(result_ID, server)
 
 def on_created(event):
     logging.debug(f"Created: {event.src_path}")
@@ -348,9 +451,19 @@ def on_deleted(event):
 
 
 def on_modified(event):
+    global c_server_dict
     logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path[2:]}' == isp_log:
         handle_new_results()
+    else:
+        print(f'{event.src_path[2:]}')
+        for s in c_server_dict.values():
+            if s.s_c_feed == f'{event.src_path[2:]}':
+                print('for works')
+                handle_new_s_results(s)
+        #s = c_server_dict[f'{event.src_path[2:]}']
+        #handle_new_s_results(s)
+
 
 
 def on_moved(event):
