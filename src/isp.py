@@ -13,6 +13,8 @@ import services
 
 import logging
 
+from replicator import replicator
+
 
 class Server():
     def __init__(self, name: str, server_isp_feed: str, isp_server_feed: str, isp_server_key: str,
@@ -34,14 +36,14 @@ class Server():
 
 class Client():
     def __init__(self, name: str, client_isp_feed: str, isp_client_feed: str, isp_client_key: str,
-                 highest_request_ID: int,
-                 open_requests: list):
+                 highest_request_ID: int, open_requests: list):
         self.name = name
         self.client_isp_feed = client_isp_feed
         self.isp_client_feed = isp_client_feed
         self.isp_client_key = isp_client_key
         self.highest_request_ID = highest_request_ID
         self.open_requests = open_requests
+        self.config = {}
 
     def to_string(self):
         return f'{self.name}, {self.client_isp_feed}, {self.isp_client_feed}, {self.isp_client_key}, {self.highest_request_ID}, {self.open_requests}'
@@ -57,20 +59,60 @@ def init():
     global server_names
     global server_dict
 
+    global isp_config
     name = args.name
 
     # Create isp_client feeds
-    for client in client_names:
-        if os.path.exists(f'feeds/{name}/{name}_{client}.pcap') and os.path.exists(f'feeds/{name}/{name}_{client}.key'):
+    for client in isp_config['client_names']:
+        if os.path.exists(f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap') and \
+                os.path.exists(f'{isp_config[client]["location"]}/{isp_config[client]["key"]}'):
+
             logging.info(f'Feed and key for {name} exist')
             # isp to client feeds
-            isp_client_key = f'feeds/{name}/{name}_{client}.key'
-            isp_client_feed = f'feeds/{name}/{name}_{client}.pcap'
+            isp_client_key = f'{isp_config[client]["location"]}/{isp_config[client]["key"]}'
+            isp_client_feed =f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap'
+            client_isp_feed =f'{isp_config[client]["location"]}/{isp_config[client]["c_alias"]}.pcap'
 
-            client_class = Client(client, 'unknown', isp_client_feed, isp_client_key, 0, [])
+
+            client_class = Client(client, client_isp_feed, isp_client_feed, isp_client_key, 0, [])
+            client_class.config = isp_config[client]
             client_dict[client] = client_class
             logging.info(f'ISP-FEED:{isp_client_feed}')
             logging.info(f'ISP-KEY:{isp_client_key}')
+            replicator.replicate(client_class.isp_client_feed,
+                                 f'{client_class.config["c_location"]}/{client_class.config["alias"]}.pcap')
+
+            print(client_class.to_string())
+
+        elif not os.path.exists(f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap') and \
+                os.path.exists(f'{isp_config[client]["location"]}/{isp_config[client]["key"]}'):
+
+            print("key exists feed not")
+            fid, signer = feed.load_keyfile(f'{isp_config[client]["location"]}/{isp_config[client]["key"]}')
+            client_feed = feed.FEED(f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap', fid, signer, True)
+
+            isp_client_feed = f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap'
+            isp_client_key = f'{isp_config[client]["location"]}/{isp_config[client]["key"]}'
+
+            pk = feed.get_public_key(isp_client_key)
+            print(pk)
+
+            client_class = Client(client, isp_config[client]['c_alias'], isp_client_feed, isp_client_key, 0, [])
+            client_class.config = isp_config[client]
+            client_dict[client] = client_class
+
+            feed_entry = {
+                'type': 'initiation',
+                'alias': isp_config[client]['alias'],
+                'key': pk,
+                'location': isp_config[client]['location']
+            }
+
+            logging.info(f'writing in {isp_config}: {feed_entry}')
+            print(isp_client_feed)
+            client_feed.write(feed_entry)
+            replicator.replicate(client_class.isp_client_feed,
+                                 f'{client_class.config["c_location"]}/{client_class.config["alias"]}.pcap')
 
         else:
             logging.info(f'Feed for {name} does not exist')
@@ -83,41 +125,44 @@ def init():
             logging.warning("# new ED25519 key pair: ALWAYS keep the private key as a secret")
             logging.warning('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-            if not os.path.exists(f'feeds/{name}'):
-                os.mkdir(f'feeds/{name}')
-            f = open(f'feeds/{name}/{name}_{client}.key', 'w')
+            if not os.path.exists(f'{isp_config[client]["location"]}'):
+                os.mkdir(f'{isp_config[client]["location"]}')
+            f = open(f'{isp_config[client]["location"]}/{isp_config[client]["key"]}', 'w')
             f.write(header)
             f.write(keys)
             f.close()
 
             try:
-                os.remove(f'feeds/{name}/{name}_{client}.pcap')
+                os.remove(f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap')
             except:
                 pass
 
-            isp_client_key = f'feeds/{name}/{name}_{client}.key'
-            isp_client_feed = f'feeds/{name}/{name}_{client}.pcap'
+            isp_client_key = f'{isp_config[client]["location"]}/{isp_config[client]["key"]}'
+            isp_client_feed = f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap'
 
-            client_class = Client(client, 'unknown', isp_client_feed, isp_client_key, 0, [])
+            client_class = Client(client, isp_config[client]['c_alias'], isp_client_feed, isp_client_key, 0, [])
+            client_class.config = isp_config[client]
             client_dict[client] = client_class
 
             logging.info(f'Created Feed for {name} in {isp_client_feed}')
             logging.info(f'Created Key for {name} in {isp_client_key}')
 
+            pk = feed.get_public_key(isp_client_key)
             # TODO exchange source and dest with public keys
             feed_entry = {
-                'ID': 0,
                 'type': 'initiation',
-                'source': name,
-                'destination': name,
-                'service': 'init',
-                'attributes': None
+                'alias': f'{isp_config[client]["alias"]}',
+                'key': pk,
+                'location': f'{isp_config[client]["location"]}'
             }
 
             logging.info(f'Writing in {isp_client_feed}: {feed_entry}')
             fid, signer = feed.load_keyfile(isp_client_key)
-            feed.FEED(isp_client_feed, fid, signer, True).write(feed_entry)
-
+            client_feed = feed.FEED(f'{isp_config[client]["location"]}/{isp_config[client]["alias"]}.pcap', fid, signer,
+                                    True)
+            client_feed.write(feed_entry)
+            replicator.replicate(client_class.isp_client_feed,
+                                 f'{client_class.config["c_location"]}/{client_class.config["alias"]}.pcap')
             # services.announce_all_services(client_class)
 
     for server in server_names:
@@ -187,19 +232,15 @@ def init_clients():
 
     isp_name = args.name
 
-    for name in client_names:
-        if os.path.exists(f'feeds/{name}/{name}_{isp_name}.pcap'):
-
-            client_log = f'feeds/{name}/{name}_{isp_name}.pcap'
-
-            logging.info(f'Feed for {name} exists')
-            logging.info(f'Client-LOG:{client_log}')
-
+    for name in isp_config['client_names']:
+        try:
             client = client_dict[name]
-            client.client_isp_feed = client_log
-            logging.info(client_dict[name].to_string())
+        except:
+            logging.critical(f'Client: {name} does not exist')
 
-            p = pcap.PCAP(client_log)
+        if os.path.exists(f'{client.client_isp_feed}'):
+
+            p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
                 # here we apply our knowledge about the event/pkt's internal struct
@@ -213,7 +254,6 @@ def init_clients():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-
                 if isinstance(e[2], dict) and e[2]['type'] == 'request':
                     request_ID = e[2]["ID"]
                     logging.debug(f'ID={e[2]["ID"]}')
@@ -225,8 +265,6 @@ def init_clients():
                     client.highest_request_ID = max(request_ID, client.highest_request_ID)
 
             p.close()
-
-            client = client_dict[name]
 
             p = pcap.PCAP(client.isp_client_feed)
             p.open('r')
@@ -257,7 +295,7 @@ def init_clients():
 
             p.close()
 
-            p = pcap.PCAP(client_log)
+            p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
                 # here we apply our knowledge about the event/pkt's internal struct
@@ -270,7 +308,6 @@ def init_clients():
                 seq = e[0][1]
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
-
 
                 if isinstance(e[2], dict) and e[2]['type'] == 'request':
                     request_ID = e[2]["ID"]
@@ -350,7 +387,6 @@ def init_servers():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-
                 if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce':
                     introduce_ID = e[2]["introduce_ID"]
                     logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
@@ -386,11 +422,11 @@ def send_result(log_entry, result, client: Client):
         'result': result
     }
 
-
     logging.info(f'Sending result - writing in {client.isp_client_feed}:\n {feed_entry}')
     client.highest_request_ID += 1
     wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-
+    replicator.replicate(client.isp_client_feed, f'{client.config["c_location"]}/{client.config["alias"]}.pcap')
+    print('sent result')
 
 def send_request(request: dict):
     global next_request_ID
@@ -429,10 +465,12 @@ def wr_feed(f, key, msg):
 def send_invalid_result(log_entry, error, client: Client):
     send_result(log_entry, f'Invalid request - source:{error}', client)
 
+
 def invalid_server(log_entry, client: Client):
     logging.warning("INVALID SERVER")
     logging.debug(log_entry)
     send_invalid_result(log_entry, 'server', client)
+
 
 def invalid_format(log_entry, client: Client):
     logging.warning("INVALID LOG ENTRY")
@@ -478,7 +516,7 @@ def read_introduce(log_entry, client: Client):
             'introduce_ID': server.highest_introduce_ID,
             'request_ID': log_entry['ID'],
             'request_source': client.name,
-            'debug' : log_entry['destination'],
+            'debug': log_entry['destination'],
             'type': 'introduce',
             'attributes': client.name
         }
@@ -490,6 +528,7 @@ def read_introduce(log_entry, client: Client):
         client.highest_request_ID += 1
     else:
         logging.debug(f'ALREADY HANDLED: {log_entry}')
+
 
 def handle_approved_introduce(server: Server):
     global client_dict
@@ -508,7 +547,8 @@ def handle_approved_introduce(server: Server):
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
-        if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce' and server.open_introduces.__contains__(e[2]['introduce_ID']):
+        if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce' and server.open_introduces.__contains__(
+                e[2]['introduce_ID']):
             logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
@@ -524,7 +564,7 @@ def handle_approved_introduce(server: Server):
                 'destination': 'does not matter',
                 'service': 'introduce',
                 'result': result,
-                'debug' : e[2]['debug']
+                'debug': e[2]['debug']
             }
 
             logging.info(f'Sending INTRODUCTION result')
@@ -575,16 +615,22 @@ def on_deleted(event):
 def on_modified(event):
     # TODO Regex to check if it is feed file and then handle over feed file
     logging.debug(f"Feed update:{event.src_path}")
-
+    print(event.src_path)
     global client_dict
 
-    if 'client' in f'{event.src_path}':
 
-        for client in client_dict.values():
 
-            if f'{event.src_path[2:]}' == client.client_isp_feed:
-                logging.info(f'Handling client incoming')
-                handle_new_requests(client)
+    for client in client_dict.values():
+        print(client.to_string())
+        print(client_dict)
+        print()
+        print(f'{event.src_path}')
+        print(client.client_isp_feed)
+        print(f'{event.src_path}' == client.client_isp_feed)
+        print()
+        if f'{event.src_path}' == client.client_isp_feed:
+            logging.info(f'Handling client incoming')
+            handle_new_requests(client)
 
     if 'server' in f'{event.src_path}':
 
@@ -671,9 +717,9 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-    #TODO config file
-    client_names = ['client']#01', 'client02', 'client03', 'client04']
-    server_names = ['server']#01', 'server02', 'server03', 'server04']
+    # TODO config file
+    client_names = ['client']  # 01', 'client02', 'client03', 'client04']
+    server_names = ['server']  # 01', 'server02', 'server03', 'server04']
 
     with open('peers.json', 'w') as fp:
         json.dump(client_names, fp)
@@ -695,6 +741,7 @@ if __name__ == '__main__':
     logging.debug(f'ISP-KEY:{isp_key}')
     logging.debug(f'Client-LOG:{client_log}')
 
+    isp_config = json.loads(open("isp-conf.json").read())
     init()
     init_clients()
     init_servers()

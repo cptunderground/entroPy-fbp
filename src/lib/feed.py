@@ -144,6 +144,16 @@ def load_keyfile(fn):
         signer = crypto.HMAC256(bytes.fromhex(key['private']))
     return fid, signer
 
+def get_public_key(fn):
+    with open(fn, 'r') as f:
+        key = eval(f.read())
+    if key['type'] == 'ed25519':
+        pk = key['public']
+
+    elif key['type'] == 'hmac_sha256':
+        pk = key['feed_id']
+
+    return pk
 
 def append_feed(pcap, keyfile, content):
     fid, signer = load_keyfile(keyfile)

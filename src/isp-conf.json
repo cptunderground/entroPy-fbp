@@ -1,0 +1,37 @@
+{   
+    "name":"isp",
+    "client_names": ["client01","fff111"],
+    "server_names": ["server01"],
+
+    "client01":
+    {   
+        "role": "client",
+        "name": "client01",
+        "alias":"isp_client01",
+        "key":"isp_client01.key",
+        "location":"./feeds/isp",
+        "c_alias":"client01_isp",
+        "c_location":"./feeds/client01"
+    },
+    "fff111":
+    {   
+        "role": "client",
+        "name": "fff111",
+        "alias":"isp_fff111",
+        "key":"isp_fff111.key",
+        "location":"./feeds/isp",
+        "c_alias":"fff111_isp",
+        "c_location":"./feeds/fff111"
+    },
+
+    "server01":
+    {   
+        "role": "server",
+        "name": "server01",
+        "alias":"isp_server01",
+        "key":"isp_server01.key",
+        "location":"./feeds/isp",
+        "s_alias":"server01_isp",
+        "s_location":"./feeds/server01"
+    }
+}

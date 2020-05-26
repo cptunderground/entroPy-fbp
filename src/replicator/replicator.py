@@ -15,7 +15,17 @@ class Replicator():
             f.close()
         copy2(self.source_path, self.dest_path)
 
-
+def replicate(src,dst):
+    try:
+        if os.path.exists(dst):
+            print('exists')
+            pass
+        else:
+            f = open(dst, 'w+')
+            f.close()
+        copy2(src, dst)
+    except:
+        print('could not replicate')
 def test_replicate():
     src = f'c/client01_isp.pcap'
     dst = f'i/client01_isp_cp.pcap'

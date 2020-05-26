@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import multiprocessing
 import re
@@ -9,11 +10,14 @@ import time
 
 import cbor2
 
+import fbp
 import lib.feed as feed
 import lib.pcap as pcap
 import lib.crypto as crypto
 
 # TODO adapt regex for any python structur
+from replicator import replicator
+
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
 
@@ -143,6 +147,7 @@ def clear_await(ID):
 def wr_feed(f, key, msg):
     logging.info(f'Writing in {f}: {msg}')
     feed.append_feed(f, key, msg)
+    replicator.replicate(f'{client_config["location"]}/{client_config["alias"]}.pcap', f'{client_config["isp_location"]}/{client_config["alias"]}.pcap')
 
 
 def create_E2E_feed(identifier):
@@ -209,12 +214,36 @@ def create_feed(name):
     global client_log
     global client_key
     global next_request_ID
+    global client_config
 
-    if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(
-            f'feeds/{name}/{name}_{args.peer}.key'):
+    if os.path.exists(f'{client_config["location"]}/{client_config["alias"]}.pcap') and os.path.exists(
+            f'{client_config["location"]}/{client_config["key"]}'):
         logging.info(f'Feed and key for {name} exist')
-        client_key = f'feeds/{name}/{name}_{args.peer}.key'
-        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
+        client_key = f'{client_config["location"]}/{client_config["key"]}'
+        client_log = f'{client_config["location"]}/{client_config["alias"]}.pcap'
+
+    elif not os.path.exists(f'{client_config["location"]}/{client_config["alias"]}.pcap') and os.path.exists(
+            f'{client_config["location"]}/{client_config["key"]}'):
+        print("key exists feed not")
+        fid, signer = feed.load_keyfile(f'{client_config["location"]}/{client_config["key"]}')
+        client_feed = feed.FEED(f'{client_config["location"]}/{client_config["alias"]}.pcap', fid, signer, True)
+
+        client_log = f'{client_config["location"]}/{client_config["alias"]}.pcap'
+        client_key = f'{client_config["location"]}/{client_config["key"]}'
+
+        pk = feed.get_public_key(client_key)
+        print(pk)
+        # TODO exchange sourece and dest with public keys
+        feed_entry = {
+            'type': 'initiation',
+            'alias': client_config['alias'],
+            'key': pk,
+            'location': client_config['location']
+        }
+        next_request_ID += 1
+
+        logging.info(f'writing in {client_log}: {feed_entry}')
+        client_feed.write(feed_entry)
     else:
         key_pair = crypto.ED25519()
         key_pair.create()
@@ -224,32 +253,31 @@ def create_feed(name):
         logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
         logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-        if not os.path.exists(f'feeds/{name}'):
-            os.mkdir(f'feeds/{name}')
-        f = open(f'feeds/{name}/{name}_{args.peer}.key', 'w')
+        if not os.path.exists(f'{client_config["location"]}'):
+            os.mkdir(f'{client_config["location"]}')
+        f = open(f'{client_config["location"]}/{client_config["key"]}', 'w')
         f.write(header)
         f.write(keys)
         f.close()
 
         try:
-            os.remove(f'feeds/{name}/{name}_{args.peer}.pcap')
+            os.remove(f'{client_config["location"]}/{client_config["alias"]}.pcap')
         except:
             pass
 
-        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}_{args.peer}.key')
-        client_feed = feed.FEED(f'feeds/{name}/{name}_{args.peer}.pcap', fid, signer, True)
+        fid, signer = feed.load_keyfile(f'{client_config["location"]}/{client_config["key"]}')
+        client_feed = feed.FEED(f'{client_config["location"]}/{client_config["alias"]}.pcap', fid, signer, True)
 
-        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
-        client_key = f'feeds/{name}/{name}_{args.peer}.key'
+        client_log = f'{client_config["location"]}/{client_config["alias"]}.pcap'
+        client_key = f'{client_config["location"]}/{client_config["key"]}'
 
+        pk = feed.get_public_key(f'{client_config["location"]}/{client_config["key"]}')
         # TODO exchange sourece and dest with public keys
         feed_entry = {
-            'ID': next_request_ID,
             'type': 'initiation',
-            'source': args.name,
-            'destination': args.name,
-            'service': 'init',
-            'attributes': name
+            'alias': client_config['alias'],
+            'key': pk,
+            'location': client_config['location']
         }
         next_request_ID += 1
 
@@ -397,8 +425,6 @@ def read_result(ID):
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
-        logging.debug(f'Search ID {ID}')
-        logging.debug(f'Actual ID {e[2]["ID"]}')
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
             if e[2]['ID'] == ID:
                 logging.debug(f'from read_result  ID={e[2]["ID"]}')
@@ -453,7 +479,10 @@ def on_deleted(event):
 def on_modified(event):
     global c_server_dict
     logging.debug(f"Modified: {event.src_path}")
-    if f'{event.src_path[2:]}' == isp_log:
+
+    #if f'{event.src_path[2:]}' == isp_log:
+
+    if f'{event.src_path[2:]}' == f'{client_config["location"]}/{client_config["isp"]}.pcap':
         handle_new_results()
     else:
         print(f'{event.src_path[2:]}')
@@ -470,7 +499,7 @@ def on_moved(event):
     logging.critical(f"Moved: {event.src_path} to {event.dest_path}")
 
 
-def start_watchdog():
+def start_watchdog(method_to_call):
     import time
     from watchdog.observers import Observer
     from watchdog.events import PatternMatchingEventHandler
@@ -493,18 +522,34 @@ def start_watchdog():
     my_observer.start()
     try:
         while True:
-            inp = input()
-            request = handle_input(inp)
-            if request != None:
-                send_request(request)
-            else:
-                print('')
+            method_to_call()
             time.sleep(1)
             logging.info('next imput:')
     except KeyboardInterrupt:
         my_observer.stop()
         my_observer.join()
 
+'''
+if __name__ == '__main__':
+
+    def inp():
+        inp = input()
+        request = handle_input(inp)
+        if request != None:
+            c.send_request(request)
+        else:
+            print('')
+
+
+    n = 'client'
+    cil = 'feeds/client/client_isp.pcap'
+    cik = 'feeds/client/client_isp.key'
+    icl = 'feeds/isp/isp_client.pcap'
+    logging.basicConfig(level=logging.DEBUG)
+    c = fbp.FBP_Client(name=n, c_i_log=cil, c_i_key=cik, i_c_log=icl)
+    c.init()
+    c.start(inp)
+'''
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
@@ -527,6 +572,8 @@ if __name__ == '__main__':
 
     c_server_dict = dict()
 
+    client_config = json.loads(open("client-conf.json").read())
+    print(client_config)
     init()
 
     logging.info("Type Request {--service -destination [attributes]}")
@@ -534,22 +581,18 @@ if __name__ == '__main__':
     request = {}
 
     # request = handle_input(input())
-    line_in = []
-    line_in.append('--echo -isp [The echo]')
-    line_in.append('--echo -isp [An, echo, list]')
-    line_in.append('--testservice -something [does not matter]')
-    line_in.append('nothing right')
-    line_in.append('--stream -netflix [Black Mirror]')
 
-    start_watchdog()
-
-    '''while True:
+    def r():
         inp = input()
-        request = handle_input(line)
+        request = handle_input(inp)
         if request != None:
             send_request(request)
         else:
-            print('')'''
+            print('')
+
+    start_watchdog(r)
+
+
 
     logging.info('dumping feed...')
     pcap.dump(client_log)

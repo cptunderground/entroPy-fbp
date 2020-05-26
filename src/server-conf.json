@@ -1,0 +1,6 @@
+{
+    "name": "server01",
+    "alias": "server01_isp",
+    "key": "server01_isp.key",
+    "location": "./feeds/server01"
+}
