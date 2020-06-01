@@ -111,7 +111,7 @@ def on_modified(event):
 
 
 def on_moved(event):
-    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    print(f"ok ok ok, someone moved {event.src_path} to {event.destination}")
 
 
 def test_watchdog():
@@ -243,4 +243,19 @@ if __name__ == '__main__':
     # test_watchdog()
     # test_read_BW()
     # test_logging(True)
-    test_logging(False)
+    # test_logging(False)
+
+    print(os.listdir("feeds/fff111"))
+
+    for file in os.listdir("feeds/fff111"):
+        print(os.path.isfile(os.path.join("feeds/fff111", file)))
+        if os.path.isfile(os.path.join("feeds/fff111", file)) and file.endswith(".pcap"):
+            print(file)
+
+    #pcap.dump("feeds/fff111/fff111_ser001.pcap")
+    #pcap.dump("feeds/fff111/ser001_fff111.pcap")
+    pcap.dump("feeds/fff111/isp001_fff111.pcap")
+    pcap.dump("feeds/isp001/fff111_isp001.pcap")
+
+
+    #pcap.dump("feeds/client01/isp_client01.pcap")

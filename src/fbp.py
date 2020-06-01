@@ -209,7 +209,7 @@ class FBP_Client:
             # handle_new_s_results(s)
 
     def on_moved(self, event):
-        logging.critical(f"Moved: {event.src_path} to {event.dest_path}")
+        logging.critical(f"Moved: {event.src_path} to {event.destination}")
 
     def start(self, method_to_call):
         patterns = "*"

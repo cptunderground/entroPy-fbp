@@ -1,3 +1,4 @@
+import json
 import logging
 import inspect
 from isp import Client
@@ -10,6 +11,18 @@ class Service():
         :return: 0
         '''
         return 0
+
+    def getservers(attributes):
+        '''
+        :param: 'All'
+        :return: every registered server key
+        '''
+        if str(attributes).lower() == 'all':
+            conf = json.loads(open("isp-conf.json").read())
+
+            return conf["server_keys"]
+        else:
+            Service.invalid_attributes('getserver', attributes, error='attribute needs to be all')
 
     def echo(attributes):
         '''
@@ -37,15 +50,15 @@ class Service():
             return sum
         else:
 
-            Service.invalid_attributes('add', attributes)
+            Service.invalid_attributes('add', attributes, error='unknown')
 
-    def invalid_attributes(src, attributes):
+    def invalid_attributes(src, attributes, error):
         '''
         If a service is invoked with poorly chosen attributes, it passes these here and an error message gets returned.
         :param attributes: Any
         :return: Error
         '''
-        return f'Error in attributes: {attributes} for service: {src}'
+        return f'Error: {error} in attributes: {attributes} for service: {src}'
 
 
 

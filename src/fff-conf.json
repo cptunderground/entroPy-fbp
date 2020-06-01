@@ -1,8 +1,7 @@
+
 {
-    "name": "fff111",
-    "alias": "fff111_isp",
-    "key": "fff111_isp.key",
-    "location": "feeds/fff111",
-    "isp": "isp_fff111",
-    "isp_location": "feeds/isp"
+    "cpk": "fff111",
+    "ipk": "isp001",
+    "c_loc": "./feeds/fff111",
+    "i_loc": "./feeds/isp001"
 }

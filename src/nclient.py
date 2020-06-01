@@ -21,7 +21,7 @@ from replicator import replicator
 full_pattern = r'^service=([a-zA-Z ]+) destination=([a-zA-Z ]+) attrs=\[(([0-9a-zA-Z ][0-9a-zA-Z_ ]*)*([,][0-9a-zA-Z ][0-9a-zA-Z_ ]*)*)\]'
 full_test_string = 'service=echo      destination=isp  attrs=[te  st, hallo welt, noweqfdnqw] '
 
-short_pattern = r'^--([a-zA-Z ]+) -([a-zA-Z ]+) \[(([0-9a-zA-Z ]*[0-9a-zA-Z_\' ]*)([,][0-9a-zA-Z ][0-9a-zA-Z_\' ]*)*)\]'
+short_pattern = r'^--([a-zA-Z0-9 ]+) -([a-zA-Z0-9 ]+) \[(([0-9a-zA-Z ]*[0-9a-zA-Z_\' ]*)([,][0-9a-zA-Z ][0-9a-zA-Z_\' ]*)*)\]'
 short_test_string = '--echo      -isp  [te  st, hallo welt, noweqfdnqw]'
 
 delimitor = '---------------------------------------------'
@@ -30,17 +30,33 @@ delimitor = '---------------------------------------------'
 class cServer():
     def __init__(self, name: str, s_c_feed: str, c_s_feed: str, c_s_key: str,
                  highest_introduce_ID: int,
-                 open_introduces: list):
+                 open_introduces: list, replicator: replicator.Replicator):
         self.name = name
         self.s_c_feed = s_c_feed
         self.c_s_feed = c_s_feed
         self.c_s_key = c_s_key
         self.highest_introduce_ID = highest_introduce_ID
         self.open_introduces = open_introduces
+        self.replicator = replicator
 
     def to_string(self):
         return f'{self.name}, {self.s_c_feed}, {self.c_s_feed}, {self.c_s_key}, {self.highest_introduce_ID}, ' \
                f'{self.open_introduces}'
+
+    def asdict(self):
+        d = {
+            'name': self.name,
+            's_c_feed': self.s_c_feed,
+            'c_s_feed': self.c_s_feed,
+            'c_s_key': self.c_s_key,
+            'replicator': {
+                'name': self.replicator.name,
+                'source': self.replicator.source_path,
+                'destination': self.replicator.destination
+            }
+
+        }
+        return d
 
 
 def handle_input(msg):
@@ -123,6 +139,8 @@ def send_request(request: dict):
             feed_entry = {
                 'ID': next_request_ID,
                 'type': 'request',
+                'source': args.name,
+                'destination': request['destination'],
                 'service': request['service'],
                 'attributes': attributes
             }
@@ -130,16 +148,39 @@ def send_request(request: dict):
             logging.warning(f'Feed for {request["attributes"]} already exists')
             return
 
-    feed_entry = {
-        'ID': next_request_ID,
-        'type': 'request',
-        'source': args.name,
-        'destination': request['destination'],
-        'service': request['service'],
-        'attributes': request['attributes']
-    }
+    elif request['service'] == 'detruce':
+        print(request['attributes'])
+        if request['attributes'] in c_server_dict.keys():
 
-    if str(request['destination']).lower() == 'isp':
+            public_key = delete_E2E_feed(request['attributes'])
+
+            attributes = {
+                'server': request['attributes'],
+                'public_key': public_key
+            }
+
+            feed_entry = {
+                'ID': next_request_ID,
+                'type': 'request',
+                'source': args.name,
+                'destination': request['destination'],
+                'service': request['service'],
+                'attributes': attributes
+            }
+        else:
+            logging.warning(f'Feed for {request["attributes"]} does not exist')
+            return
+    else:
+        feed_entry = {
+            'ID': next_request_ID,
+            'type': 'request',
+            'source': args.name,
+            'destination': request['destination'],
+            'service': request['service'],
+            'attributes': request['attributes']
+        }
+
+    if str(request['destination']).lower() == client_config['ipk']:
         wr_feed(client_log, client_key, feed_entry)
         await_result(feed_entry['ID'])
         next_request_ID += 1
@@ -148,7 +189,7 @@ def send_request(request: dict):
         if len(c_server_dict) != 0:
             for server in c_server_dict.values():
                 if str(request['destination']).lower() == server.name:
-                    wr_feed(server.c_s_feed, server.c_s_key, feed_entry)
+                    wr_server_feed(feed_entry, server)
                     await_result(feed_entry['ID'])
                     next_request_ID += 1
                 else:
@@ -157,27 +198,34 @@ def send_request(request: dict):
             logging.info('No servers registered')
 
 
-def await_result(ID):
-    global result_ID_list
-    result_ID_list.append(ID)
-
-
-def clear_await(ID):
-    global result_ID_list
-    result_ID_list.remove(ID)
-
-
 def wr_feed(f, key, msg):
     logging.info(f'Writing in {f}: {msg}')
     feed.append_feed(f, key, msg)
     replicator.replicate(f'{client_config["location"]}/{client_config["alias"]}.pcap',
                          f'{client_config["isp_location"]}/{client_config["alias"]}.pcap')
 
-
-def create_E2E_feed(identifier):
+def wr_server_feed(msg, server:cServer):
+    logging.info(f'Writing in {server.c_s_feed}: {msg}')
+    feed.append_feed(server.c_s_feed, server.c_s_key, msg)
+    server.replicator.replicate()
+def delete_E2E_feed(spk):
     global c_server_dict
-    res = identifier
-    identifier = f'feeds/{args.name}/{identifier}'
+    server = c_server_dict[spk]
+
+    pk = feed.get_public_key(server.c_s_key)
+
+    os.remove(server.c_s_feed)
+    os.remove(server.c_s_key)
+    os.remove(server.s_c_feed)
+    c_server_dict.pop(spk)
+    print(c_server_dict)
+    return pk
+
+def create_E2E_feed(spk):
+    global c_server_dict
+    cpk = client_config["name"]
+    c_location = client_config["location"]
+    i_location = client_config["isp_location"]
 
     key_pair = crypto.ED25519()
     key_pair.create()
@@ -187,38 +235,44 @@ def create_E2E_feed(identifier):
     logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
     logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-    if not os.path.exists(f'{client_config["location"]}'):
-        os.mkdir(f'feeds/{args.name}')
-    f = open(f'{client_config["location"]}/{eval(keys)["public"]}.key', 'w')
+    if not os.path.exists(f'{c_location}'):
+        os.mkdir(f'{c_location}')
+    f = open(f'{c_location}/{cpk}_{spk}.key', 'w')
     f.write(header)
     f.write(keys)
     f.close()
 
     try:
-        os.remove(f'{client_config["location"]}/{eval(keys)["public"]}.pcap')
+        os.remove(f'{c_location}/{cpk}_{spk}.pcap')
     except:
         pass
 
-    fid, signer = feed.load_keyfile(f'{client_config["location"]}/{eval(keys)["public"]}.key')
-    E2E_feed = feed.FEED(f'{client_config["location"]}/{eval(keys)["public"]}.pcap', fid, signer, True)
+    fid, signer = feed.load_keyfile(f'{c_location}/{cpk}_{spk}.key')
+    E2E_feed = feed.FEED(f'{c_location}/{cpk}_{spk}.pcap', fid, signer, True)
 
+    alias_c_s = f'{c_location}/{cpk}_{spk}.pcap'
+    alias_s_c = f'{c_location}/{spk}_{cpk}.pcap'
+    key_c_s = f'{c_location}/{cpk}_{spk}.key'
     # TODO exchange sourece and dest with public keys
+
+    rep = replicator.Replicator(f'{cpk}_{spk}.pcap', alias_c_s, i_location)
+    cserver = cServer(spk, alias_s_c, alias_c_s, key_c_s, 0, [], rep)
+    c_server_dict[spk] = cserver
+    print(c_server_dict[spk].to_string())
+
     feed_entry = {
         'type': 'init',
-        'alias': f'{eval(keys)["public"]}',
-        'public_key': eval(keys)["public"],
-        'location': client_config['location'],
+        'key': feed.get_public_key(key_c_s),
+        'cserver': cserver.asdict()
     }
-
-    c_server_dict[res] = cServer(res, 'unknown', f'{client_config["location"]}/{eval(keys)["public"]}.pcap',
-                                 f'{client_config["location"]}/{eval(keys)["public"]}.key', 0, [])
-    print(c_server_dict[res].to_string())
-    logging.info(f'writing in {identifier}: {feed_entry}')
+    logging.info(f'writing in {spk}: {feed_entry}')
     E2E_feed.write(feed_entry)
+    cserver.replicator.replicate()
+
     return eval(keys)["public"]
 
 
-def create_feed(name):
+def create_feed():
     global client_log
     global client_key
     global next_request_ID
@@ -226,7 +280,7 @@ def create_feed(name):
 
     if os.path.exists(f'{client_config["location"]}/{client_config["alias"]}.pcap') and os.path.exists(
             f'{client_config["location"]}/{client_config["key"]}'):
-        logging.info(f'Feed and key for {name} exist')
+        logging.info(f'Feed and key exist')
         client_key = f'{client_config["location"]}/{client_config["key"]}'
         client_log = f'{client_config["location"]}/{client_config["alias"]}.pcap'
 
@@ -298,7 +352,7 @@ def init():
     global highest_result_ID
     global result_ID_list
 
-    create_feed(args.name)
+    create_feed()
 
     logging.info('Initialising from feeds...')
     p = pcap.PCAP(client_log)
@@ -350,6 +404,42 @@ def init():
 
     p.close()
 
+    path = client_config['location']
+    print(path)
+    for log in os.listdir(path):
+        print(os.path.isfile(os.path.join(path, log)))
+        if os.path.isfile(os.path.join(path, log)) and log.endswith(".pcap"):
+            print(log)
+            p = pcap.PCAP(f'{path}/{log}')
+            p.open('r')
+            for w in p:
+                # here we apply our knowledge about the event/pkt's internal struct
+                e = cbor2.loads(w)
+                href = hashlib.sha256(e[0]).digest()
+                e[0] = cbor2.loads(e[0])
+                # rewrite the packet's byte arrays for pretty printing:
+                e[0] = pcap.base64ify(e[0])
+                fid = e[0][0]
+                seq = e[0][1]
+                if e[2] != None:
+                    e[2] = cbor2.loads(e[2])
+
+
+                if isinstance(e[2], dict) and e[2]['type'] == 'init':
+                    print(e[2])
+                    try:
+                        server = e[2]['cserver']
+                        rep = e[2]['cserver']['replicator']
+                        creplicator = replicator.Replicator(rep['name'], rep['source'],rep['destination'])
+                        cserver = cServer(server['name'], server['s_c_feed'], server['c_s_feed'], server['c_s_key'], 0,
+                                          [], creplicator)
+                        c_server_dict[server['name']] = cserver
+                        print(server)
+                    except:
+                        pass
+            p.close()
+    print(c_server_dict)
+
     for s in c_server_dict.values():
         p = pcap.PCAP(s.c_s_feed)
         p.open('r')
@@ -380,8 +470,14 @@ def init():
     pass
 
 
-def add_server(identifier):
-    pass
+def await_result(ID):
+    global result_ID_list
+    result_ID_list.append(ID)
+
+
+def clear_await(ID):
+    global result_ID_list
+    result_ID_list.remove(ID)
 
 
 def read_c_result(ID, server: cServer):
@@ -448,17 +544,13 @@ def read_result(ID):
     return False
 
 
-def setup_server(log_entry):
-    pass
-
-
 def handle_result(log_entry):
     if log_entry['service'] == 'introduce':
         logging.info(f'Got introduce result from ID:{log_entry["ID"]}')
         logging.info(f'-> {log_entry}')
 
         if log_entry['result'] != 'already exists':
-            setup_server(log_entry)
+            pass
     else:
         logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
         logging.info(f'-> {log_entry}')
@@ -522,7 +614,7 @@ def start_watchdog(method_to_call):
     my_event_handler.on_modified = on_modified
     my_event_handler.on_moved = on_moved
 
-    path = "./feeds"
+    path = client_config['location']
     go_recursively = True
     my_observer = Observer()
     my_observer.schedule(my_event_handler, path, recursive=go_recursively)
@@ -538,29 +630,6 @@ def start_watchdog(method_to_call):
         my_observer.join()
 
 
-'''
-if __name__ == '__main__':
-
-    def inp():
-        inp = input()
-        request = handle_input(inp)
-        if request != None:
-            c.send_request(request)
-        else:
-            print('')
-
-
-    n = 'client'
-    cil = 'feeds/client/client_isp.pcap'
-    cik = 'feeds/client/client_isp.key'
-    icl = 'feeds/isp/isp_client.pcap'
-    logging.basicConfig(level=logging.DEBUG)
-    c = fbp.FBP_Client(name=n, c_i_log=cil, c_i_key=cik, i_c_log=icl)
-    c.init()
-    c.start(inp)
-'''
-
-
 def read_config(fn):
     basic_config = json.loads(open(fn).read())
     try:
@@ -574,6 +643,7 @@ def read_config(fn):
 
     config = {
         "name": client_public_key,
+        "ipk": isp_public_key,
         "alias": f'{client_public_key}_{isp_public_key}',
         "key": f'{client_public_key}_{isp_public_key}.key',
         "location": client_location,
@@ -630,6 +700,3 @@ if __name__ == '__main__':
 
     logging.info('dumping feed...')
     pcap.dump(client_log)
-
-# TODO: Refactor
-# TODO: Logging

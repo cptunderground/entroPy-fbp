@@ -518,7 +518,7 @@ def send_c_result(log_entry, result, client: sClient):
 
 
 def on_moved(event):
-    logging.critical(f"Moved: {event.src_path} to {event.dest_path}")
+    logging.critical(f"Moved: {event.src_path} to {event.destination}")
 
 
 def start_watchdog():

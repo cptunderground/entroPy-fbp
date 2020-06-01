@@ -1,37 +1,26 @@
 {   
-    "name":"isp",
-    "client_names": ["client01","fff111"],
-    "server_names": ["server01"],
+    "ipk":"isp001",
+    "location": "./feeds/isp001",
+    "client_keys": ["fff111"],
+    "server_keys": ["ser001"],
 
-    "client01":
-    {   
+    "cli001":
+    {
         "role": "client",
-        "name": "client01",
-        "alias":"isp_client01",
-        "key":"isp_client01.key",
-        "location":"./feeds/isp",
-        "c_alias":"client01_isp",
-        "c_location":"./feeds/client01"
+        "cpk": "cli001",
+        "c_location":"./feeds/cli001"
     },
     "fff111":
-    {   
+    {
         "role": "client",
-        "name": "fff111",
-        "alias":"isp_fff111",
-        "key":"isp_fff111.key",
-        "location":"./feeds/isp",
-        "c_alias":"fff111_isp",
+        "cpk": "fff111",
         "c_location":"./feeds/fff111"
     },
 
-    "server01":
-    {   
+    "ser001":
+    {
         "role": "server",
-        "name": "server01",
-        "alias":"isp_server01",
-        "key":"isp_server01.key",
-        "location":"./feeds/isp",
-        "s_alias":"server01_isp",
-        "s_location":"./feeds/server01"
+        "spk": "ser001",
+        "s_location":"./feeds/ser001"
     }
 }
