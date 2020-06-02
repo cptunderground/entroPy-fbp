@@ -815,7 +815,28 @@ def read_detruce(log_entry, client: Client):
 
 
     del_pk = delete_E2E_feed(server, client, pk)
+
     send_result(log_entry, del_pk, client)
+
+    attributes = {
+        'server': log_entry['attributes']['server'],
+        'client': log_entry['attributes']['client'],
+        'public_key': del_pk
+    }
+
+    request = {
+        "introduce_ID": server.highest_introduce_ID,
+        "type": 'detruce',
+        "source": pk,
+        'destination': server.name,
+        'service': 'detruce',
+        'attributes': attributes
+    }
+
+    server.highest_introduce_ID += 1
+    wr_feed(server.isp_server_feed, server.isp_server_key, request)
+    server.replicator.replicate()
+
 
 def read_introduce(log_entry, client: Client):
     # TODO NEXT
@@ -823,14 +844,34 @@ def read_introduce(log_entry, client: Client):
     # answer
     try:
         server = server_dict[log_entry['attributes']['server']]
-        pk = log_entry['attributes']['public_key']
+        c_pk = log_entry['attributes']['public_key']
     except:
         invalid_server(log_entry, client)
 
-    pk = create_E2E_feed(server, client, pk)
+    pk = create_E2E_feed(server, client, c_pk)
 
     send_result(log_entry, pk, client)
     # introduce to server
+
+    attributes = {
+        'server': log_entry['attributes']['server'],
+        'client': log_entry['attributes']['client'],
+        'public_key': pk
+    }
+
+    request = {
+        "introduce_ID": server.highest_introduce_ID,
+        "type": 'introduce',
+        "source": c_pk,
+        'destination': server.name,
+        'service': 'introduce',
+        'attributes': attributes
+    }
+
+    server.highest_introduce_ID += 1
+    wr_feed(server.isp_server_feed, server.isp_server_key, request)
+    server.replicator.replicate()
+
     '''
     if log_entry['ID'] > client.highest_request_ID:
 

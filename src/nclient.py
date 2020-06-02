@@ -133,6 +133,7 @@ def send_request(request: dict):
             public_key = create_E2E_feed(request['attributes'])
             attributes = {
                 'server': request['attributes'],
+                'client': client_config['name'],
                 'public_key': public_key
             }
 
@@ -156,6 +157,7 @@ def send_request(request: dict):
 
             attributes = {
                 'server': request['attributes'],
+                'client': client_config['name'],
                 'public_key': public_key
             }
 

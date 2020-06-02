@@ -252,10 +252,10 @@ if __name__ == '__main__':
         if os.path.isfile(os.path.join("feeds/fff111", file)) and file.endswith(".pcap"):
             print(file)
 
-    #pcap.dump("feeds/fff111/fff111_ser001.pcap")
-    #pcap.dump("feeds/fff111/ser001_fff111.pcap")
-    pcap.dump("feeds/fff111/isp001_fff111.pcap")
-    pcap.dump("feeds/isp001/fff111_isp001.pcap")
+    # pcap.dump("feeds/fff111/fff111_ser001.pcap")
+    # pcap.dump("feeds/fff111/ser001_fff111.pcap")
+    # pcap.dump("feeds/fff111/isp001_fff111.pcap")
+    pcap.dump("feeds/isp001/isp001_ser001.pcap")
+    pcap.dump('feeds/ser001/ser001_fff111.pcap')
 
-
-    #pcap.dump("feeds/client01/isp_client01.pcap")
+    # pcap.dump("feeds/client01/isp_client01.pcap")
