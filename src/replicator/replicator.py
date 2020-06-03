@@ -7,6 +7,7 @@ class Replicator():
         self.source_path = f'{source}'
         self.destination = f'{destination}'
 
+
     def replicate(self):
         rep_file = f'{self.destination}/{self.name}'
         if os.path.exists(rep_file):
@@ -16,6 +17,7 @@ class Replicator():
             f = open(rep_file, 'w+')
             f.close()
         copy2(self.source_path, rep_file)
+        print('Replication done')
 
 def replicate(src,dst):
     try:

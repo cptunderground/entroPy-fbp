@@ -571,20 +571,8 @@ def init_servers():
     global server_dict
     global server_names
 
-    isp_name = args.name
-
-    for name in server_names:
-        if os.path.exists(f'feeds/{name}/{name}_{isp_name}.pcap'):
-
-            server_log = f'feeds/{name}/{name}_{isp_name}.pcap'
-
-            logging.info(f'Feed for {name} exists')
-            logging.info(f'server-LOG:{server_log}')
-
-            server = server_dict[name]
-            server.server_isp_feed = server_log
-            logging.info(server_dict[name].to_string())
-
+    for server in server_dict.values():
+        if os.path.exists(f'{server.isp_server_feed}') and os.path.exists(f'{server.server_isp_feed}'):
             p = pcap.PCAP(server.isp_server_feed)
             p.open('r')
             for w in p:
@@ -599,7 +587,7 @@ def init_servers():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-                if isinstance(e[2], dict) and e[2]['type'] == 'introduce':
+                if isinstance(e[2], dict) and 'introduce_ID' in e[2].keys():
                     introduce_ID = e[2]["introduce_ID"]
 
                     logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
@@ -608,6 +596,7 @@ def init_servers():
 
                     server.open_introduces.append(introduce_ID)
                     server.highest_introduce_ID = max(introduce_ID, server.highest_introduce_ID)
+                    print(server.highest_introduce_ID)
 
             p.close()
 
@@ -639,14 +628,6 @@ def init_servers():
 
             p.close()
 
-
-
-
-
-        else:
-            logging.critical(f'Feed for {name} does not exist')
-
-            pass
 
 
 def send_result(log_entry, result, client: Client):
@@ -821,7 +802,7 @@ def read_detruce(log_entry, client: Client):
     attributes = {
         'server': log_entry['attributes']['server'],
         'client': log_entry['attributes']['client'],
-        'public_key': del_pk
+        'public_key': pk
     }
 
     request = {
@@ -856,7 +837,7 @@ def read_introduce(log_entry, client: Client):
     attributes = {
         'server': log_entry['attributes']['server'],
         'client': log_entry['attributes']['client'],
-        'public_key': pk
+        'public_key': c_pk
     }
 
     request = {
@@ -868,8 +849,9 @@ def read_introduce(log_entry, client: Client):
         'attributes': attributes
     }
 
-    server.highest_introduce_ID += 1
+    print('SERVER INTRODUCE')
     wr_feed(server.isp_server_feed, server.isp_server_key, request)
+    server.highest_introduce_ID += 1
     server.replicator.replicate()
 
     '''
@@ -935,7 +917,8 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-
+        if isinstance(e[2], dict) and e[2]['type'] == 'result' :
+            print(e[2])
     p.close()
 
 
@@ -997,11 +980,12 @@ def on_modified(event):
     for sub_client in sub_client_dict.values():
         if f'{event.src_path}' == sub_client.client_isp_feed:
             logging.info(f'Handling SUB client incoming')
+            handle_new_sub_request(sub_client)
             print("SUB REQUEST RECEIVED")
 
     for server in server_dict.values():
         logging.debug(server.to_string())
-        if f'{event.src_path[2:]}' == server.server_isp_feed:
+        if f'{event.src_path}' == server.server_isp_feed:
             logging.info(f'SERVERINC')
             handle_approved_introduce(server)
 
@@ -1009,6 +993,53 @@ def on_modified(event):
 def on_moved(event):
     logging.critical(f"ok ok ok, someone moved {event.src_path} to {event.destination}")
 
+def multiplex_request(log_entry, sub_client: Client):
+    print(sub_client)
+
+    server = server_dict[log_entry['destination']]
+
+    request = log_entry
+
+
+    mux_request = {
+        "introduce_ID": server.highest_introduce_ID,
+        "type": 'request',
+        "source": sub_client.name,
+        'destination': server.name,
+        'request': request
+    }
+    print(mux_request)
+    server.highest_introduce_ID += 1
+    wr_feed(server.isp_server_feed, server.isp_server_key, mux_request)
+    server.replicator.replicate()
+
+def handle_new_sub_request(sub_client: Client):
+    p = pcap.PCAP(sub_client.client_isp_feed)
+    p.open('r')
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            request_ID = e[2]["ID"]
+            logging.debug(f'ID={e[2]["ID"]}')
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
+
+            if request_ID > sub_client.highest_request_ID:
+                multiplex_request(e[2], sub_client)
+            elif sub_client.open_requests.__contains__(request_ID):
+                sub_client.open_requests.remove(request_ID)
+                multiplex_request(e[2], sub_client)
 
 def handle_new_requests(client: Client):
     p = pcap.PCAP(client.client_isp_feed)

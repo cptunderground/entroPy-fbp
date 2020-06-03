@@ -1,1 +1,1 @@
-{"name": "client", "client_isp_feed": "feeds/client/client_isp.pcap", "isp_client_feed": "feeds/isp/isp_client.pcap", "isp_client_key": "feeds/isp/isp_client.key", "highest_request_ID": 27, "open_requests": [4]}
+{"name": "fff111", "client_isp_feed": "./feeds/isp001/fff111_isp001.pcap", "isp_client_feed": "./feeds/isp001/isp001_fff111.pcap", "isp_client_key": "./feeds/isp001/isp001_fff111.key", "highest_request_ID": 3, "open_requests": [], "config": {"role": "client", "cpk": "fff111", "c_location": "./feeds/fff111"}, "replicator": 

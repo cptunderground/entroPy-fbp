@@ -13,6 +13,7 @@ import cbor2
 import lib.feed as feed
 import lib.pcap as pcap
 import lib.crypto as crypto
+from replicator import replicator
 
 
 class sClient():
@@ -30,7 +31,7 @@ class sClient():
 
     def asdict(self):
         d = {
-            'name' : self.name,
+            'name': self.name,
             'c_s_feed': self.E2E_c_s_log,
             'c_s_key': self.E2E_c_s_key,
             's_c_feed': self.E2E_s_c_log,
@@ -38,8 +39,17 @@ class sClient():
         }
         return d
 
+
 def wr_feed(f, key, msg):
     feed.append_feed(f, key, msg)
+
+
+def wr_c_s_feed(client: sClient, msg):
+    feed.append_feed(client.E2E_c_s_log, client.E2E_c_s_key, msg)
+
+
+def wr_s_c_feed(client: sClient, msg):
+    feed.append_feed(client.E2E_s_c_log, client.E2E_s_c_key, msg)
 
 
 def create_feed(name):
@@ -189,11 +199,12 @@ def init():
         # print(f"   hashref={href.hex()}")
         # print(f"   content={e[2]}")
 
-        if isinstance(e[2], dict) and e[2]['type'] == 'introduce':
+        if isinstance(e[2], dict) and (e[2]['type'] == 'introduce' or e[2]['type'] =='request'):
+            print(e[2])
             logging.debug(f'from init request  ID={e[2]["introduce_ID"]}')
 
             highest_introduce_ID = max(int(e[2]["introduce_ID"]), highest_introduce_ID)
-
+            print(highest_introduce_ID)
     p.close()
 
     p = pcap.PCAP(server_log)
@@ -217,7 +228,7 @@ def init():
             logging.debug(f'from init request  ID={e[2]["introduce_ID"]}')
             approved.append(e[2]['introduce_ID'])
             if e[2]['result'] != 'already exists':
-                #add_client(e[2])
+                # add_client(e[2])
                 pass
 
     p.close()
@@ -247,7 +258,8 @@ def init():
                     print(e[2])
                     try:
                         client = e[2]['client']
-                        sclient = sClient(client['name'], client['c_s_feed'], client['c_s_key'], client['s_c_feed'], client['s_c_key'], 0,
+                        sclient = sClient(client['name'], client['c_s_feed'], client['c_s_key'], client['s_c_feed'],
+                                          client['s_c_key'], 0,
                                           [])
                         s_client_dict[client['name']] = sclient
                         print(sclient)
@@ -426,15 +438,14 @@ def handle_introduction():
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
 
+            print(highest_introduce_ID)
             if e[2]['introduce_ID'] > highest_introduce_ID:
-                print(f'logentry:{e[2]}')
                 attributes = e[2]['attributes']
-                print(f'attributes:{attributes}')
                 create_e2e_feed(attributes)
+                highest_introduce_ID += 1
                 send_result(e[2], 'approved')
-            elif not approved.__contains__(e[2]['introduce_ID']):
-                attributes = e[2]['attributes']
-                create_e2e_feed(attributes)
+
+
                 send_result(e[2], 'approved')
         elif isinstance(e[2], dict) and e[2]['type'] == 'detruce':
             logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
@@ -446,11 +457,26 @@ def handle_introduction():
                 attributes = e[2]['attributes']
                 print(f'attributes:{attributes}')
                 delete_e2e_feed(attributes)
+                highest_introduce_ID += 1
                 send_result(e[2], 'approved')
-            elif not approved.__contains__(e[2]['introduce_ID']):
-                attributes = e[2]['attributes']
-                delete_e2e_feed(attributes)
-                send_result(e[2], 'approved')
+
+
+        elif isinstance(e[2], dict) and e[2]['type'] == 'request':
+            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
+            logging.debug(f"   hashref={href.hex()}")
+            logging.debug(f"   content={e[2]}")
+
+            if e[2]['introduce_ID'] > highest_introduce_ID:
+                request = e[2]['request']
+                print(f'SUBCLIENT REQUEST {e[2]}')
+                sub_client = s_client_dict[e[2]['source']]
+                handle_request(e[2], sub_client)
+                highest_introduce_ID += 1
+
+
+
+
+
     p.close()
 
 
@@ -467,6 +493,7 @@ def send_result(log_entry, result):
     wr_feed(server_log, server_key, introduce_entry)
     highest_introduce_ID += 1
 
+
 def delete_e2e_feed(attributes):
     cpk = attributes['public_key']
     sclient = s_client_dict[cpk]
@@ -477,6 +504,7 @@ def delete_e2e_feed(attributes):
     os.remove(sclient.E2E_s_c_key)
 
     s_client_dict.pop(cpk)
+
 
 def create_e2e_feed(attributes):
     global s_client_dict
@@ -580,9 +608,8 @@ def on_modified(event):
             read_c_request(c)
             logging.info('works')
         except:
-            logging.warning(s_client_dict)
             logging.warning(f'{event.src_path[2:]}')
-            logging.warning('file not connected to server changed')
+
 
 
 def read_c_request(client: sClient):
@@ -620,7 +647,33 @@ def handle_request(log_entry, client: sClient):
     # TODO implement services
     print('got')
     result = 'got it'
-    send_c_result(log_entry, result, client)
+    request = log_entry['request']
+    wr_c_s_feed(client, request)
+
+    # handle
+    result_entry = {
+        'ID': request['ID'],
+        'type': 'result',
+        'source': server_config['name'],
+        'destination': client.name,
+        'service': request['service'],
+        'attributes': request['attributes'],
+        'result': result
+    }
+
+    mux_result = {
+        'introduce_ID': log_entry['introduce_ID'],
+        'type': 'result',
+        'result': result_entry
+    }
+    print(result_entry)
+    print(mux_result)
+
+    wr_s_c_feed(client, result_entry)
+    wr_feed(server_log, server_key, mux_result)
+
+    r=replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
+    r.replicate()
 
 
 def send_c_result(log_entry, result, client: sClient):
@@ -658,7 +711,7 @@ def start_watchdog():
     my_event_handler.on_modified = on_modified
     my_event_handler.on_moved = on_moved
 
-    path = "./feeds"
+    path = f'{server_config["location"]}'
     go_recursively = True
     my_observer = Observer()
     my_observer.schedule(my_event_handler, path, recursive=go_recursively)
@@ -709,7 +762,7 @@ if __name__ == '__main__':
     server_log = 'unknown'
     server_key = 'unknown'
 
-    highest_introduce_ID = 0
+    highest_introduce_ID = -1
     approved = []
 
     s_client_dict = dict()
