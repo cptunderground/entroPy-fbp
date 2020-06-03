@@ -179,6 +179,8 @@ def init():
         logging.info(f'writing in {server_log}: {feed_entry}')
         client_feed.write(feed_entry)
 
+    r = replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
+    r.replicate()
     # TODO Init on already introduced clients
 
     logging.info('Initialising from feed...')
@@ -442,10 +444,6 @@ def handle_introduction():
             if e[2]['introduce_ID'] > highest_introduce_ID:
                 attributes = e[2]['attributes']
                 create_e2e_feed(attributes)
-                highest_introduce_ID += 1
-                send_result(e[2], 'approved')
-
-
                 send_result(e[2], 'approved')
         elif isinstance(e[2], dict) and e[2]['type'] == 'detruce':
             logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
@@ -457,7 +455,6 @@ def handle_introduction():
                 attributes = e[2]['attributes']
                 print(f'attributes:{attributes}')
                 delete_e2e_feed(attributes)
-                highest_introduce_ID += 1
                 send_result(e[2], 'approved')
 
 
@@ -491,6 +488,10 @@ def send_result(log_entry, result):
     logging.info(f'Sending result')
     logging.info(f'Writing in {server_log}: {introduce_entry}')
     wr_feed(server_log, server_key, introduce_entry)
+
+    r = replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
+    r.replicate()
+
     highest_introduce_ID += 1
 
 

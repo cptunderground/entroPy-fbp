@@ -572,7 +572,12 @@ def init_servers():
     global server_names
 
     for server in server_dict.values():
+        print(f'here{server}')
+        print(server.isp_server_feed)
+        print(server.server_isp_feed)
+        print(os.path.exists(f'{server.isp_server_feed}') and os.path.exists(f'{server.server_isp_feed}'))
         if os.path.exists(f'{server.isp_server_feed}') and os.path.exists(f'{server.server_isp_feed}'):
+            print(f'in if {server}')
             p = pcap.PCAP(server.isp_server_feed)
             p.open('r')
             for w in p:
@@ -586,7 +591,7 @@ def init_servers():
                 seq = e[0][1]
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
-
+                print(e[2])
                 if isinstance(e[2], dict) and 'introduce_ID' in e[2].keys():
                     introduce_ID = e[2]["introduce_ID"]
 
@@ -917,7 +922,15 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-        if isinstance(e[2], dict) and e[2]['type'] == 'result' :
+        if isinstance(e[2], dict) and e[2]['type'] == 'result':
+            result = e[2]['result']
+            sub_client = sub_client_dict[result['destination']]
+            wr_feed(sub_client.isp_client_feed, sub_client.isp_client_key, result)
+            sub_client.replicator.replicate()
+
+            if sub_client.open_requests.__contains__(result['ID']):
+                sub_client.open_requests.remove(result['ID'])
+
             print(e[2])
     p.close()
 
@@ -1009,6 +1022,7 @@ def multiplex_request(log_entry, sub_client: Client):
         'request': request
     }
     print(mux_request)
+    sub_client.highest_request_ID += 1
     server.highest_introduce_ID += 1
     wr_feed(server.isp_server_feed, server.isp_server_key, mux_request)
     server.replicator.replicate()
@@ -1035,11 +1049,12 @@ def handle_new_sub_request(sub_client: Client):
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
 
+            print("request ID sub client")
+            print(e[2]['ID'])
+            print(sub_client.highest_request_ID)
             if request_ID > sub_client.highest_request_ID:
                 multiplex_request(e[2], sub_client)
-            elif sub_client.open_requests.__contains__(request_ID):
-                sub_client.open_requests.remove(request_ID)
-                multiplex_request(e[2], sub_client)
+
 
 def handle_new_requests(client: Client):
     p = pcap.PCAP(client.client_isp_feed)
@@ -1149,6 +1164,8 @@ if __name__ == '__main__':
         logging.info(ser.to_string())
     for ser in server_dict.keys():
         print(f'key={ser}')
+    for sub in sub_client_dict.values():
+        logging.info(sub.to_string())
     start_watchdog()
 
     logging.info("Dumping feeds...")

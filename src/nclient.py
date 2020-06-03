@@ -590,8 +590,11 @@ def on_modified(event):
     else:
         print(f'{event.src_path[2:]}')
         for s in c_server_dict.values():
-            if s.s_c_feed == f'{event.src_path[2:]}':
-                print('for works')
+            if s.s_c_feed == f'{event.src_path}':
+
+                print('E2E INCOMING')
+
+
                 handle_new_s_results(s)
         # s = c_server_dict[f'{event.src_path[2:]}']
         # handle_new_s_results(s)
