@@ -14,6 +14,11 @@ class Replicator():
             print('exists')
             pass
         else:
+            if os.path.exists(self.destination):
+                pass
+            else:
+                os.mkdir(self.destination)
+
             f = open(rep_file, 'w+')
             f.close()
         copy2(self.source_path, rep_file)

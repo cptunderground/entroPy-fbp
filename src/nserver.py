@@ -49,8 +49,8 @@ def wr_c_s_feed(client: sClient, msg):
 
 
 def wr_s_c_feed(client: sClient, msg):
-    feed.append_feed(client.E2E_s_c_log, client.E2E_s_c_key, msg)
-
+    w = feed.append_feed(client.E2E_s_c_log, client.E2E_s_c_key, msg)
+    return w
 
 def create_feed(name):
     global client_log
@@ -135,7 +135,7 @@ def init():
             'key': pk,
             'location': server_config['location']
         }
-        highest_introduce_ID += 1
+
 
         logging.info(f'writing in {server_log}: {feed_entry}')
         client_feed.write(feed_entry)
@@ -174,7 +174,7 @@ def init():
             'key': pk,
             'location': server_config['location']
         }
-        highest_introduce_ID += 1
+
 
         logging.info(f'writing in {server_log}: {feed_entry}')
         client_feed.write(feed_entry)
@@ -436,11 +436,10 @@ def handle_introduction():
             e[2] = cbor2.loads(e[2])
 
         if isinstance(e[2], dict) and e[2]['type'] == 'introduce':
-            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            logging.debug(f"   hashref={href.hex()}")
-            logging.debug(f"   content={e[2]}")
+            print(f'in introduce')
 
-            print(highest_introduce_ID)
+            print(f'detected introduce id:{e[2]["introduce_ID"]}')
+            print(f'highest_introduce_ID:{highest_introduce_ID}')
             if e[2]['introduce_ID'] > highest_introduce_ID:
                 attributes = e[2]['attributes']
                 create_e2e_feed(attributes)
@@ -521,8 +520,9 @@ def create_e2e_feed(attributes):
     s_c_key = f'{location}/{server_name}_{client_name}.key'
 
     c_s_feed = f'{location}/{client_name}_{server_name}.pcap'
-    c_s_key = f'{location}/{client_name}_{server_name}.key'
+    c_s_key = None
 
+    '''
     key_pair = crypto.ED25519()
     key_pair.create()
     header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
@@ -535,14 +535,14 @@ def create_e2e_feed(attributes):
     f.write(header)
     f.write(keys)
     f.close()
-
+    '''
     try:
         os.remove(c_s_feed)
     except:
         pass
 
-    fid, signer = feed.load_keyfile(c_s_key)
-    E2E_client_feed = feed.FEED(c_s_feed, fid, signer, True)
+    #fid, signer = feed.load_keyfile(c_s_key)
+
 
     key_pair = crypto.ED25519()
     key_pair.create()
@@ -564,18 +564,20 @@ def create_e2e_feed(attributes):
 
     fid, signer = feed.load_keyfile(s_c_key)
     E2E_server_feed = feed.FEED(s_c_feed, fid, signer, True)
+    E2E_client_feed = feed.FEED(c_s_feed, fid, signer, True)
 
     sclient = sClient(cpk, c_s_feed, c_s_key, s_c_feed, s_c_key, 0, [])
     s_client_dict[cpk] = sclient
     logging.info(s_client_dict[cpk].to_string())
 
-    cspk = feed.get_public_key(c_s_key)
+    #cspk = feed.get_public_key(c_s_key)
     scpk = feed.get_public_key(s_c_key)
 
+    #TODO Introduce reverse order
     c_s_feed_entry = {
         'type': 'init',
         'alias': f'{client_name}_{server_name}.pcap',
-        'key': cspk,
+        'key': None,
         'client': sclient.asdict(),
     }
 
@@ -589,6 +591,7 @@ def create_e2e_feed(attributes):
     E2E_client_feed.write(c_s_feed_entry)
     E2E_server_feed.write(s_c_feed_entry)
 
+    print(f'Clinet Dict: {s_client_dict}')
 
 def on_created(event):
     logging.debug(f"Created {event.src_path}")
@@ -600,8 +603,10 @@ def on_deleted(event):
 
 def on_modified(event):
     global s_client_dict
+    print(f'Modified Path: {event.src_path}')
     logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path}' == isp_log:
+        print(f'in if')
         handle_introduction()
     else:
         try:
@@ -648,8 +653,20 @@ def handle_request(log_entry, client: sClient):
     # TODO implement services
     print('got')
     result = 'got it'
-    request = log_entry['request']
-    wr_c_s_feed(client, request)
+    w = log_entry['request']
+    e = cbor2.loads(w)
+    if e[2] != None:
+        e[2] = cbor2.loads(e[2])
+    request = e[2]
+
+    print(f'w:{w}')
+    print(f'e[2]:{e[2]}')
+    print(f'request:{request}')
+
+    c_s_feed = feed.FEED(client.E2E_c_s_log)
+    c_s_feed._append(w)
+
+
 
     # handle
     result_entry = {
@@ -662,15 +679,18 @@ def handle_request(log_entry, client: sClient):
         'result': result
     }
 
+
+    print(result_entry)
+
+    mux_w = wr_s_c_feed(client, result_entry)
+
     mux_result = {
         'introduce_ID': log_entry['introduce_ID'],
         'type': 'result',
-        'result': result_entry
+        'result': mux_w
     }
-    print(result_entry)
-    print(mux_result)
 
-    wr_s_c_feed(client, result_entry)
+    print(mux_result)
     wr_feed(server_log, server_key, mux_result)
 
     r=replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
@@ -720,7 +740,7 @@ def start_watchdog():
     my_observer.start()
     try:
         while True:
-            time.sleep(1)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         my_observer.stop()
         my_observer.join()

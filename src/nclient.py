@@ -629,7 +629,7 @@ def start_watchdog(method_to_call):
         while True:
             method_to_call()
             time.sleep(1)
-            logging.info('next imput:')
+            logging.info('next input:')
     except KeyboardInterrupt:
         my_observer.stop()
         my_observer.join()

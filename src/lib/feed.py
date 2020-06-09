@@ -40,6 +40,7 @@ class FEED:
         except Exception as e:
             if not self.cine:
                 self.pcap = None
+                print(e)
                 print(f"error opening file {fname}")
             else:
                 self.pcap.open('w')
@@ -160,8 +161,8 @@ def append_feed(pcap, keyfile, content):
     feed = FEED(pcap, fid, signer)
     print("feed.py writing to feed")
 
-    feed.write(content)
-
+    w = feed.write(content)
+    return w
 
 if __name__ == '__main__':
 

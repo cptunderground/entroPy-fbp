@@ -770,21 +770,21 @@ def create_E2E_feed(server: Server, client: Client, pk):
     except:
         pass
 
-    fid, signer = feed.load_keyfile(f'{location}/{spk}_{cpk}.key')
+    fid, signer = feed.load_keyfile(client.isp_client_key) #f'{location}/{spk}_{cpk}.key')
     E2E_feed = feed.FEED(f'{location}/{spk}_{cpk}.pcap', fid, signer, True)
 
     alias_c_s = f'{location}/{cpk}_{spk}.pcap'
     alias_s_c = f'{location}/{spk}_{cpk}.pcap'
-    key_s_c = f'{location}/{spk}_{cpk}.key'
+    #key_s_c = f'{location}/{spk}_{cpk}.key'
 
     rep = replicator.Replicator(f'{spk}_{cpk}.pcap', alias_s_c, isp_config[cpk]["c_location"])
-    sub_client = Client(pk, alias_c_s, alias_s_c, key_s_c, 0, [], rep)
+    sub_client = Client(pk, alias_c_s, alias_s_c, None, 0, [], rep)
     sub_client_dict[pk] = sub_client
     print(sub_client_dict[pk].to_string())
 
     feed_entry = {
         'type': 'init',
-        'key': feed.get_public_key(key_s_c),
+        'key': None,
         'sub_client': sub_client.asdict()
     }
     logging.info(f'writing in {spk}: {feed_entry}')
@@ -923,13 +923,26 @@ def handle_approved_introduce(server: Server):
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
+
+            print(f'e:{e}')
             result = e[2]['result']
-            sub_client = sub_client_dict[result['destination']]
-            wr_feed(sub_client.isp_client_feed, sub_client.isp_client_key, result)
+            print(f'result:{result}')
+
+            demux_result = cbor2.loads(result)
+            if demux_result[2] != None:
+                demux_result[2] = cbor2.loads(demux_result[2])
+
+            print(f'demux_res:{demux_result}')
+            print(f'demux_res[2]:{demux_result[2]}')
+
+            sub_client = sub_client_dict[demux_result[2]['destination']]
+
+            f = feed.FEED(sub_client.isp_client_feed)
+            f._append(result)
             sub_client.replicator.replicate()
 
-            if sub_client.open_requests.__contains__(result['ID']):
-                sub_client.open_requests.remove(result['ID'])
+            if sub_client.open_requests.__contains__(demux_result[2]['ID']):
+                sub_client.open_requests.remove(demux_result[2]['ID'])
 
             print(e[2])
     p.close()
@@ -1006,12 +1019,17 @@ def on_modified(event):
 def on_moved(event):
     logging.critical(f"ok ok ok, someone moved {event.src_path} to {event.destination}")
 
-def multiplex_request(log_entry, sub_client: Client):
+def multiplex_request(w, sub_client: Client):
     print(sub_client)
 
-    server = server_dict[log_entry['destination']]
+    e = cbor2.loads(w)
+    if e[2] != None:
+        e[2] = cbor2.loads(e[2])
+    print(f'e[2]["destination"]:{e[2]["destination"]}')
+    print(f'server_dict:{server_dict}')
+    server = server_dict[e[2]['destination']]
 
-    request = log_entry
+    request = w
 
 
     mux_request = {
@@ -1053,7 +1071,7 @@ def handle_new_sub_request(sub_client: Client):
             print(e[2]['ID'])
             print(sub_client.highest_request_ID)
             if request_ID > sub_client.highest_request_ID:
-                multiplex_request(e[2], sub_client)
+                multiplex_request(w, sub_client)
 
 
 def handle_new_requests(client: Client):
