@@ -120,7 +120,7 @@ def init():
 
             rep = replicator.Replicator(alias_i_s, isp_client_feed, s_location)
 
-            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, 0, [], rep)
+            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, -1, [], rep)
 
             client_class.config = isp_config[key]
             client_dict[key] = client_class
@@ -145,7 +145,7 @@ def init():
 
             rep = replicator.Replicator(alias_i_s, isp_client_feed, s_location)
 
-            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, 0, [], rep)
+            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, -1, [], rep)
             client_class.config = isp_config[key]
             client_dict[key] = client_class
 
@@ -192,7 +192,7 @@ def init():
 
             rep = replicator.Replicator(alias_i_s, isp_client_feed, s_location)
 
-            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, 0, [], rep)
+            client_class = Client(cpk, client_isp_feed, isp_client_feed, isp_client_key, -1, [], rep)
             client_class.config = isp_config[key]
             client_dict[key] = client_class
 
@@ -363,7 +363,7 @@ def init_clients():
                         rep = e[2]['sub_client']['replicator']
                         creplicator = replicator.Replicator(rep['name'], rep['source'], rep['destination'])
                         s_client = Client(sub_client['name'], sub_client['client_isp_feed'],
-                                          sub_client['isp_client_feed'], sub_client['isp_client_key'], 0,
+                                          sub_client['isp_client_feed'], sub_client['isp_client_key'], -1,
                                           [], creplicator)
                         sub_client_dict[sub_client['name']] = s_client
                         print(f'SUBCLIENT:{s_client.to_string()}')
@@ -760,7 +760,7 @@ def create_E2E_feed(server: Server, client: Client):
     #key_s_c = f'{location}/{spk}_{cpk}.key'
 
     rep = replicator.Replicator(f'{spk}_{cpk}.pcap', alias_s_c, isp_config[cpk]["c_location"])
-    sub_client = Client(cpk, alias_c_s, alias_s_c, None, 0, [], rep)
+    sub_client = Client(cpk, alias_c_s, alias_s_c, None, -1, [], rep)
     sub_client_dict[cpk] = sub_client
 
 
@@ -843,6 +843,8 @@ def read_introduce(log_entry, client: Client):
     server.highest_introduce_ID += 1
     server.replicator.replicate()
 
+
+
     '''
     if log_entry['ID'] > client.highest_request_ID:
 
@@ -909,6 +911,8 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
+            if client.open_requests.__contains__(e[2]['request_ID']):
+                client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()
 
         if isinstance(e[2], dict) and e[2]['type'] == 'detruce' and server.open_introduces.__contains__(
@@ -1078,17 +1082,15 @@ def handle_new_requests(client: Client):
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
-            logging.debug(f'ID={e[2]["ID"]}')
-            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            logging.debug(f"   hashref={href.hex()}")
-            logging.debug(f"   content={e[2]}")
-
+            print(f'detected:{request_ID}, highest:{client.highest_request_ID}')
             if request_ID > client.highest_request_ID:
+                print(f'went into IF')
                 read_request(e[2], client)
+                client.highest_request_ID += 1
             elif client.open_requests.__contains__(request_ID):
-                client.open_requests.remove(request_ID)
-                read_request(e[2], client)
-
+                #client.open_requests.remove(request_ID)
+                #read_request(e[2], client)
+                pass
     p.close()
 
 

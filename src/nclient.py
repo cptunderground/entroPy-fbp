@@ -311,7 +311,7 @@ def create_feed():
             'key': pk,
             'location': client_config['location']
         }
-        next_request_ID += 1
+
 
         logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
@@ -350,7 +350,7 @@ def create_feed():
             'key': pk,
             'location': client_config['location']
         }
-        next_request_ID += 1
+
 
         logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
@@ -472,7 +472,7 @@ def init():
 
         p.close()
 
-    next_request_ID += 1
+
     logging.info(f'Highest ID: {next_request_ID}')
     pass
 
@@ -558,8 +558,8 @@ def handle_result(e):
     if e[2]['service'] == 'introduce':
         logging.info(f'INTRODUCE')
         logging.info(f'-> {e}')
-
-        create_E2E_feed(e[2]['result'])
+        if e[2]['result'] != 'declined':
+            create_E2E_feed(e[2]['result'])
     else:
         logging.info(f'result -> {e}')
 

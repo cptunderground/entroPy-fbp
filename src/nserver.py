@@ -57,11 +57,11 @@ def create_feed(name):
     global client_key
     global next_request_ID
 
-    if os.path.exists(f'feeds/{name}/{name}_{args.peer}.pcap') and os.path.exists(
-            f'feeds/{name}/{name}_{args.peer}.key'):
+    if os.path.exists(f'feeds/{name}/{name}_{server_config["ipk"]}.pcap') and os.path.exists(
+            f'feeds/{name}/{name}_{server_config["ipk"]}.key'):
         logging.info(f'Feed and key for {name} exist')
-        client_key = f'feeds/{name}/{name}_{args.peer}.key'
-        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
+        client_key = f'feeds/{name}/{name}_{server_config["ipk"]}.key'
+        client_log = f'feeds/{name}/{name}_{server_config["ipk"]}.pcap'
     else:
         key_pair = crypto.ED25519()
         key_pair.create()
@@ -73,28 +73,28 @@ def create_feed(name):
 
         if not os.path.exists(f'feeds/{name}'):
             os.mkdir(f'feeds/{name}')
-        f = open(f'feeds/{name}/{name}_{args.peer}.key', 'w')
+        f = open(f'feeds/{name}/{name}_{server_config["ipk"]}.key', 'w')
         f.write(header)
         f.write(keys)
         f.close()
 
         try:
-            os.remove(f'feeds/{name}/{name}_{args.peer}.pcap')
+            os.remove(f'feeds/{name}/{name}_{server_config["ipk"]}.pcap')
         except:
             pass
 
-        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}_{args.peer}.key')
-        client_feed = feed.FEED(f'feeds/{name}/{name}_{args.peer}.pcap', fid, signer, True)
+        fid, signer = feed.load_keyfile(f'feeds/{name}/{name}_{server_config["ipk"]}.key')
+        client_feed = feed.FEED(f'feeds/{name}/{name}_{server_config["ipk"]}.pcap', fid, signer, True)
 
-        client_log = f'feeds/{name}/{name}_{args.peer}.pcap'
-        client_key = f'feeds/{name}/{name}_{args.peer}.key'
+        client_log = f'feeds/{name}/{name}_{server_config["ipk"]}.pcap'
+        client_key = f'feeds/{name}/{name}_{server_config["ipk"]}.key'
 
         # TODO exchange sourece and dest with public keys
         feed_entry = {
             'ID': next_request_ID,
             'type': 'initiation',
-            'source': args.name,
-            'destination': args.name,
+            'source': server_config['name'],
+            'destination': server_config['name'],
             'service': 'init',
             'attributes': name
         }
@@ -354,19 +354,6 @@ def init():
         p.close()
 
     pass
-
-
-def add_client(log_entry):
-    name = log_entry['request_source']
-    E2E_server_log = f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.pcap'
-    E2E_server_key = f'feeds/{args.server_name}/E2E_{args.server_name}_{name}.key'
-
-    client_e2e_identifier = f'E2E_{name}_{args.server_name}'
-
-    c_s = f'feeds/{name}/{client_e2e_identifier}.pcap'
-    s_client_dict[c_s] = sClient(name, c_s, E2E_server_log, E2E_server_key, 0, [])
-    sC = s_client_dict[c_s]
-    logging.info(sC.to_string())
 
 
 def read_result(ID):
@@ -727,7 +714,7 @@ def send_c_result(log_entry, result, client: sClient):
     feed_entry = {
         'ID': log_entry['ID'],
         'type': 'result',
-        'source': args.server_name,
+        'source': server_config['name'],
         'destination': log_entry['source'],
         'service': log_entry['service'],
         'result': result
@@ -798,8 +785,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
     # parser.add_argument('--keyfile')
     # parser.add_argument('pcapfile', metavar='PCAPFILE')
-    parser.add_argument('server_name')
-    parser.add_argument('isp_name')
+    #parser.add_argument('server_name')
+    #parser.add_argument('isp_name')
+    parser.add_argument('config')
 
     args = parser.parse_args()
 
@@ -813,7 +801,7 @@ if __name__ == '__main__':
 
     s_client_dict = dict()
 
-    server_config = read_config("server-conf.json")
+    server_config = read_config(args.config)
 
     isp_log = f'{server_config["location"]}/{server_config["isp"]}.pcap'
     print(isp_log)

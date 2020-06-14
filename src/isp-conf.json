@@ -2,7 +2,7 @@
     "ipk":"isp001",
     "location": "./feeds/isp001",
     "client_keys": ["fff111"],
-    "server_keys": ["ser001"],
+    "server_keys": ["ser001","ser002"],
 
     "cli001":
     {
@@ -22,5 +22,11 @@
         "role": "server",
         "spk": "ser001",
         "s_location":"./feeds/ser001"
+    },
+    "ser002":
+    {
+        "role": "server",
+        "spk": "ser002",
+        "s_location":"./feeds/ser002"
     }
 }
