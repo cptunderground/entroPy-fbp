@@ -129,11 +129,11 @@ def init():
             logging.info(f'ISP-KEY:{isp_client_key}')
             client_class.replicator.replicate()
 
-            print(client_class.to_string())
+            #print(client_class.to_string())
 
         elif not os.path.exists(f'{i_location}/{alias_i_s}') and os.path.exists(f'{i_location}/{key_i_s}'):
 
-            print("key exists feed not")
+            #print("key exists feed not")
             fid, signer = feed.load_keyfile(f'{i_location}/{key_i_s}')
             client_feed = feed.FEED(f'{i_location}/{alias_i_s}', fid, signer, True)
 
@@ -141,7 +141,7 @@ def init():
             isp_client_key = f'{i_location}/{key_i_s}'
             client_isp_feed = f'{i_location}/{alias_s_i}'
             pk = feed.get_public_key(isp_client_key)
-            print(pk)
+            #print(pk)
 
             rep = replicator.Replicator(alias_i_s, isp_client_feed, s_location)
 
@@ -158,7 +158,7 @@ def init():
             }
 
             logging.info(f'writing in {isp_config}: {feed_entry}')
-            print(isp_client_feed)
+            #print(isp_client_feed)
             client_feed.write(feed_entry)
             client_class.replicator.replicate()
 
@@ -245,11 +245,11 @@ def init():
             logging.info(f'ISP-KEY:{isp_server_key}')
             server_class.replicator.replicate()
 
-            print(server_class.to_string())
+            #print(server_class.to_string())
 
         elif not os.path.exists(f'{i_location}/{alias_i_s}') and os.path.exists(f'{i_location}/{key_i_s}'):
 
-            print("key exists feed not")
+            #print("key exists feed not")
             fid, signer = feed.load_keyfile(f'{i_location}/{key_i_s}')
             server_feed = feed.FEED(f'{i_location}/{alias_i_s}', fid, signer, True)
 
@@ -257,7 +257,7 @@ def init():
             isp_server_key = f'{i_location}/{key_i_s}'
             server_isp_feed = f'{i_location}/{alias_s_i}'
             pk = feed.get_public_key(isp_server_key)
-            print(pk)
+            #print(pk)
 
             rep = replicator.Replicator(alias_i_s, isp_server_feed, s_location)
 
@@ -274,7 +274,7 @@ def init():
             }
 
             logging.info(f'writing in {isp_config}: {feed_entry}')
-            print(isp_server_feed)
+
             server_feed.write(feed_entry)
             server_class.replicator.replicate()
 
@@ -338,21 +338,19 @@ def init_clients():
     global client_dict
     global client_names
 
-    isp_name = args.name
+    print('init_clients')
 
     path = isp_config['location']
     for log in os.listdir(path):
-        print(os.path.isfile(os.path.join(path, log)))
         if os.path.isfile(os.path.join(path, log)) and log.endswith(".pcap"):
-            print(log)
             p = pcap.PCAP(f'{path}/{log}')
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -368,9 +366,9 @@ def init_clients():
                                           sub_client['isp_client_feed'], sub_client['isp_client_key'], 0,
                                           [], creplicator)
                         sub_client_dict[sub_client['name']] = s_client
-                        print(sub_client)
+                        print(f'SUBCLIENT:{s_client.to_string()}')
                     except:
-                        pass
+                        print('No sub client found')
             p.close()
 
     for name in isp_config['client_keys']:
@@ -384,11 +382,11 @@ def init_clients():
             p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -410,11 +408,11 @@ def init_clients():
             p = pcap.PCAP(client.isp_client_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -439,11 +437,11 @@ def init_clients():
             p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -481,11 +479,11 @@ def init_clients():
             p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -507,11 +505,11 @@ def init_clients():
             p = pcap.PCAP(client.isp_client_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -536,11 +534,11 @@ def init_clients():
             p = pcap.PCAP(client.client_isp_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -572,26 +570,23 @@ def init_servers():
     global server_names
 
     for server in server_dict.values():
-        print(f'here{server}')
-        print(server.isp_server_feed)
-        print(server.server_isp_feed)
-        print(os.path.exists(f'{server.isp_server_feed}') and os.path.exists(f'{server.server_isp_feed}'))
+
         if os.path.exists(f'{server.isp_server_feed}') and os.path.exists(f'{server.server_isp_feed}'):
-            print(f'in if {server}')
+
             p = pcap.PCAP(server.isp_server_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
-                print(e[2])
+
                 if isinstance(e[2], dict) and 'introduce_ID' in e[2].keys():
                     introduce_ID = e[2]["introduce_ID"]
 
@@ -601,18 +596,18 @@ def init_servers():
 
                     server.open_introduces.append(introduce_ID)
                     server.highest_introduce_ID = max(introduce_ID, server.highest_introduce_ID)
-                    print(server.highest_introduce_ID)
+
 
             p.close()
 
             p = pcap.PCAP(server.server_isp_feed)
             p.open('r')
             for w in p:
-                # here we apply our knowledge about the event/pkt's internal struct
+
                 e = cbor2.loads(w)
                 href = hashlib.sha256(e[0]).digest()
                 e[0] = cbor2.loads(e[0])
-                # rewrite the packet's byte arrays for pretty printing:
+
                 e[0] = pcap.base64ify(e[0])
                 fid = e[0][0]
                 seq = e[0][1]
@@ -741,29 +736,16 @@ def delete_E2E_feed(server: Server, client: Client, pk):
 
     sub_client_dict.pop(pk)
 
-    print(sub_client_dict)
+
 
     return del_pk
 
-def create_E2E_feed(server: Server, client: Client, pk):
+def create_E2E_feed(server: Server, client: Client):
     cpk = client.name
     spk = server.name
     location = isp_config["location"]
 
-    key_pair = crypto.ED25519()
-    key_pair.create()
-    header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
-    keys = ('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
-    logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
-    logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
-
-    if not os.path.exists(f'{location}'):
-        os.mkdir(f'{location}')
-    f = open(f'{location}/{spk}_{cpk}.key', 'w')
-    f.write(header)
-    f.write(keys)
-    f.close()
 
     try:
         os.remove(f'{location}/{spk}_{cpk}.pcap')
@@ -778,9 +760,9 @@ def create_E2E_feed(server: Server, client: Client, pk):
     #key_s_c = f'{location}/{spk}_{cpk}.key'
 
     rep = replicator.Replicator(f'{spk}_{cpk}.pcap', alias_s_c, isp_config[cpk]["c_location"])
-    sub_client = Client(pk, alias_c_s, alias_s_c, None, 0, [], rep)
-    sub_client_dict[pk] = sub_client
-    print(sub_client_dict[pk].to_string())
+    sub_client = Client(cpk, alias_c_s, alias_s_c, None, 0, [], rep)
+    sub_client_dict[cpk] = sub_client
+
 
     feed_entry = {
         'type': 'init',
@@ -791,8 +773,6 @@ def create_E2E_feed(server: Server, client: Client, pk):
     E2E_feed.write(feed_entry)
 
     sub_client.replicator.replicate()
-
-    return eval(keys)["public"]
 
 def read_detruce(log_entry, client: Client):
 
@@ -834,10 +814,12 @@ def read_introduce(log_entry, client: Client):
     except:
         invalid_server(log_entry, client)
 
-    pk = create_E2E_feed(server, client, c_pk)
+    # pass pk to server
+    # pk = create_E2E_feed(server, client, c_pk)
 
-    send_result(log_entry, pk, client)
-    # introduce to server
+    # dont send any aswer yet
+    # send_result(log_entry, pk, client)
+
 
     attributes = {
         'server': log_entry['attributes']['server'],
@@ -847,6 +829,7 @@ def read_introduce(log_entry, client: Client):
 
     request = {
         "introduce_ID": server.highest_introduce_ID,
+        "request_ID": log_entry['ID'],
         "type": 'introduce',
         "source": c_pk,
         'destination': server.name,
@@ -856,6 +839,7 @@ def read_introduce(log_entry, client: Client):
 
     print('SERVER INTRODUCE')
     wr_feed(server.isp_server_feed, server.isp_server_key, request)
+    server.open_introduces.append(server.highest_introduce_ID)
     server.highest_introduce_ID += 1
     server.replicator.replicate()
 
@@ -883,29 +867,33 @@ def read_introduce(log_entry, client: Client):
 def handle_approved_introduce(server: Server):
     global client_dict
 
+
+    print('REACHED APPROVAL STATE')
+    print(server.server_isp_feed)
     p = pcap.PCAP(server.server_isp_feed)
     p.open('r')
     for w in p:
-        # here we apply our knowledge about the event/pkt's internal struct
+
         e = cbor2.loads(w)
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
-        # rewrite the packet's byte arrays for pretty printing:
+
         e[0] = pcap.base64ify(e[0])
         fid = e[0][0]
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
-        if isinstance(e[2], dict) and e[2]['type'] == 'approved_introduce' and server.open_introduces.__contains__(
+        if isinstance(e[2], dict) and e[2]['type'] == 'introduce' and server.open_introduces.__contains__(
                 e[2]['introduce_ID']):
-            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            logging.debug(f"   hashref={href.hex()}")
-            logging.debug(f"   content={e[2]}")
 
-            client = client_dict[e[2]['request_source']]
+
+            client = client_dict[e[2]['source']]
 
             result = e[2]['result']
+
+            print('creating e2e feeds')
+            create_E2E_feed(server,client)
 
             feed_entry = {
                 'ID': e[2]['request_ID'],
@@ -914,7 +902,6 @@ def handle_approved_introduce(server: Server):
                 'destination': 'does not matter',
                 'service': 'introduce',
                 'result': result,
-                'debug': e[2]['debug']
             }
 
             logging.info(f'Sending INTRODUCTION result')
@@ -922,34 +909,42 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-        if isinstance(e[2], dict) and e[2]['type'] == 'result':
+            client.replicator.replicate()
 
-            print(f'e:{e}')
+        if isinstance(e[2], dict) and e[2]['type'] == 'detruce' and server.open_introduces.__contains__(
+                e[2]['introduce_ID']):
+            pass
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'mux':
+
             result = e[2]['result']
-            print(f'result:{result}')
+
 
             demux_result = cbor2.loads(result)
             if demux_result[2] != None:
+                demux_result[0] = cbor2.loads(demux_result[0])
+                demux_result[0] = pcap.base64ify(demux_result[0])
+                demux_result[1] = pcap.base64ify(demux_result[1])
                 demux_result[2] = cbor2.loads(demux_result[2])
 
             print(f'demux_res:{demux_result}')
-            print(f'demux_res[2]:{demux_result[2]}')
+
 
             sub_client = sub_client_dict[demux_result[2]['destination']]
-
-            f = feed.FEED(sub_client.isp_client_feed)
-            f._append(result)
-            sub_client.replicator.replicate()
 
             if sub_client.open_requests.__contains__(demux_result[2]['ID']):
                 sub_client.open_requests.remove(demux_result[2]['ID'])
 
-            print(e[2])
+                f = feed.FEED(sub_client.isp_client_feed)
+                f._append(result)
+                sub_client.replicator.replicate()
+
+                logging.info(e)
     p.close()
 
 
 def handle_request(log_entry, client: Client):
-    # TODO dynamic switching over destination
+
     logging.debug(log_entry)
     if log_entry['service'] == 'introduce':
         logging.debug('INTRODUCE')
@@ -972,7 +967,7 @@ def handle_request(log_entry, client: Client):
     else:
         try:
             logging.debug(f'Evaluating service')
-            print(log_entry['service'])
+            logging.debug(log_entry['service'])
             f = eval(f'services.Service.{log_entry["service"]}')
             result = f(log_entry['attributes'])
             send_result(log_entry, result, client)
@@ -992,11 +987,8 @@ def on_deleted(event):
 def on_modified(event):
     # TODO Regex to check if it is feed file and then handle over feed file
     logging.debug(f"Feed update:{event.src_path}")
-    print(event.src_path)
+    logging.warning(f'File modified:{event.src_path}')
     global client_dict
-
-    print(client_dict.keys())
-    print(sub_client_dict.keys())
 
     for client in client_dict.values():
         if f'{event.src_path}' == client.client_isp_feed:
@@ -1007,12 +999,11 @@ def on_modified(event):
         if f'{event.src_path}' == sub_client.client_isp_feed:
             logging.info(f'Handling SUB client incoming')
             handle_new_sub_request(sub_client)
-            print("SUB REQUEST RECEIVED")
 
     for server in server_dict.values():
         logging.debug(server.to_string())
         if f'{event.src_path}' == server.server_isp_feed:
-            logging.info(f'SERVERINC')
+            logging.info(f'Handling server incoming')
             handle_approved_introduce(server)
 
 
@@ -1020,13 +1011,12 @@ def on_moved(event):
     logging.critical(f"ok ok ok, someone moved {event.src_path} to {event.destination}")
 
 def multiplex_request(w, sub_client: Client):
-    print(sub_client)
+
 
     e = cbor2.loads(w)
     if e[2] != None:
         e[2] = cbor2.loads(e[2])
-    print(f'e[2]["destination"]:{e[2]["destination"]}')
-    print(f'server_dict:{server_dict}')
+
     server = server_dict[e[2]['destination']]
 
     request = w
@@ -1034,12 +1024,14 @@ def multiplex_request(w, sub_client: Client):
 
     mux_request = {
         "introduce_ID": server.highest_introduce_ID,
-        "type": 'request',
+        "type": 'mux',
         "source": sub_client.name,
         'destination': server.name,
         'request': request
     }
-    print(mux_request)
+    logging.info(mux_request)
+
+    sub_client.open_requests.append(e[2]['ID'])
     sub_client.highest_request_ID += 1
     server.highest_introduce_ID += 1
     wr_feed(server.isp_server_feed, server.isp_server_key, mux_request)
@@ -1049,11 +1041,11 @@ def handle_new_sub_request(sub_client: Client):
     p = pcap.PCAP(sub_client.client_isp_feed)
     p.open('r')
     for w in p:
-        # here we apply our knowledge about the event/pkt's internal struct
+
         e = cbor2.loads(w)
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
-        # rewrite the packet's byte arrays for pretty printing:
+
         e[0] = pcap.base64ify(e[0])
         fid = e[0][0]
         seq = e[0][1]
@@ -1062,15 +1054,10 @@ def handle_new_sub_request(sub_client: Client):
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
-            logging.debug(f'ID={e[2]["ID"]}')
-            logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            logging.debug(f"   hashref={href.hex()}")
-            logging.debug(f"   content={e[2]}")
 
-            print("request ID sub client")
-            print(e[2]['ID'])
-            print(sub_client.highest_request_ID)
+            logging.info(e)
             if request_ID > sub_client.highest_request_ID:
+
                 multiplex_request(w, sub_client)
 
 
@@ -1078,11 +1065,11 @@ def handle_new_requests(client: Client):
     p = pcap.PCAP(client.client_isp_feed)
     p.open('r')
     for w in p:
-        # here we apply our knowledge about the event/pkt's internal struct
+
         e = cbor2.loads(w)
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
-        # rewrite the packet's byte arrays for pretty printing:
+
         e[0] = pcap.base64ify(e[0])
         fid = e[0][0]
         seq = e[0][1]
@@ -1144,7 +1131,7 @@ if __name__ == '__main__':
     # parser.add_argument('--debug')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
     # TODO config file
     client_names = ['client']  # 01', 'client02', 'client03', 'client04']

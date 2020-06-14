@@ -442,8 +442,15 @@ def handle_introduction():
             print(f'highest_introduce_ID:{highest_introduce_ID}')
             if e[2]['introduce_ID'] > highest_introduce_ID:
                 attributes = e[2]['attributes']
-                create_e2e_feed(attributes)
-                send_result(e[2], 'approved')
+                # create both feeds and return information from both feeds for client
+                # wait for input of server, either accept or decline
+                print('accept/decline new client:')
+                answer = input()
+                if answer == 'accept':
+                    result = create_e2e_feed(attributes)
+                    send_result(e[2], result)
+                else:
+                    send_result(e[2], 'declined')
         elif isinstance(e[2], dict) and e[2]['type'] == 'detruce':
             logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
             logging.debug(f"   hashref={href.hex()}")
@@ -457,7 +464,7 @@ def handle_introduction():
                 send_result(e[2], 'approved')
 
 
-        elif isinstance(e[2], dict) and e[2]['type'] == 'request':
+        elif isinstance(e[2], dict) and e[2]['type'] == 'mux':
             logging.debug(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
             logging.debug(f"   hashref={href.hex()}")
             logging.debug(f"   content={e[2]}")
@@ -478,9 +485,15 @@ def handle_introduction():
 
 def send_result(log_entry, result):
     global highest_introduce_ID
+
     introduce_entry = {
         'introduce_ID': log_entry['introduce_ID'],
-        'type': 'approved_introduce',
+        'request_ID' : log_entry['request_ID'],
+        'type': log_entry['type'],
+        'source' : log_entry['source'],
+        'destination' : log_entry['destination'],
+        'service': log_entry['service'],
+        'attributes' : log_entry['attributes'],
         'result': result,
     }
 
@@ -591,7 +604,13 @@ def create_e2e_feed(attributes):
     E2E_client_feed.write(c_s_feed_entry)
     E2E_server_feed.write(s_c_feed_entry)
 
+
     print(f'Clinet Dict: {s_client_dict}')
+
+    ret = server_config['name']
+
+    return ret
+
 
 def on_created(event):
     logging.debug(f"Created {event.src_path}")
@@ -651,7 +670,7 @@ def read_c_request(client: sClient):
 
 def handle_request(log_entry, client: sClient):
     # TODO implement services
-    print('got')
+    print('Handling client request')
     result = 'got it'
     w = log_entry['request']
     e = cbor2.loads(w)
@@ -659,9 +678,7 @@ def handle_request(log_entry, client: sClient):
         e[2] = cbor2.loads(e[2])
     request = e[2]
 
-    print(f'w:{w}')
-    print(f'e[2]:{e[2]}')
-    print(f'request:{request}')
+
 
     c_s_feed = feed.FEED(client.E2E_c_s_log)
     c_s_feed._append(w)
@@ -684,13 +701,21 @@ def handle_request(log_entry, client: sClient):
 
     mux_w = wr_s_c_feed(client, result_entry)
 
+    mux_w_loaded = cbor2.loads(mux_w)
+    if mux_w_loaded[2] != None:
+        mux_w_loaded[0] = cbor2.loads(mux_w_loaded[0])
+        mux_w_loaded[0] = pcap.base64ify(mux_w_loaded[0])
+        mux_w_loaded[1] = pcap.base64ify(mux_w_loaded[1])
+        mux_w_loaded[2] = cbor2.loads(mux_w_loaded[2])
+
+    print(f'S_C_FEED_ENTRY:{mux_w_loaded}')
     mux_result = {
         'introduce_ID': log_entry['introduce_ID'],
-        'type': 'result',
+        'type': 'mux',
         'result': mux_w
     }
 
-    print(mux_result)
+    print(f'Muxed result:{mux_result}')
     wr_feed(server_log, server_key, mux_result)
 
     r=replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
@@ -778,7 +803,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
     server_log = 'unknown'
     server_key = 'unknown'

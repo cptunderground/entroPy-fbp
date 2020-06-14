@@ -113,6 +113,8 @@ def handle_input(msg):
 def refresh():
     global c_server_dict
 
+    print(f'Waiting for:{result_ID_list}')
+
     handle_new_results()
 
     for s in c_server_dict.values():
@@ -126,11 +128,16 @@ def send_request(request: dict):
     global client_key
 
     global c_server_dict
-    # TODO exchange sourece and dest with public keys
+
 
     if request['service'] == 'introduce':
         if not request['attributes'] in c_server_dict.keys():
-            public_key = create_E2E_feed(request['attributes'])
+            #register only public key and send this to server
+
+            #public_key = create_E2E_feed(request['attributes'])
+
+            public_key = client_config['name']
+
             attributes = {
                 'server': request['attributes'],
                 'client': client_config['name'],
@@ -456,9 +463,7 @@ def init():
             seq = e[0][1]
             if e[2] != None:
                 e[2] = cbor2.loads(e[2])
-            # print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
-            # print(f"   hashref={href.hex()}")
-            # print(f"   content={e[2]}")
+
 
             if isinstance(e[2], dict) and e[2]['type'] == 'request':
                 logging.debug(f'from init request  ID={e[2]["ID"]}')
@@ -498,6 +503,7 @@ def read_c_result(ID, server: cServer):
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
+            e[1] = pcap.base64ify(e[1])
 
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
             if e[2]['ID'] == ID:
@@ -507,7 +513,7 @@ def read_c_result(ID, server: cServer):
                 logging.debug(f"   content={e[2]}")
                 if result_ID_list.__contains__(ID):
                     clear_await(ID)
-                handle_result(e[2])
+                handle_result(e)
                 return True
 
     p.close()
@@ -530,6 +536,7 @@ def read_result(ID):
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
+            e[1] = pcap.base64ify(e[1])
 
         if isinstance(e[2], dict) and e[2]['type'] == 'result':
             if e[2]['ID'] == ID:
@@ -538,24 +545,23 @@ def read_result(ID):
                 logging.debug(f"   hashref={href.hex()}")
                 logging.debug(f"   content={e[2]}")
                 if result_ID_list.__contains__(ID):
+
                     clear_await(ID)
-                handle_result(e[2])
-                return True
+                handle_result(e)
+
 
     p.close()
-    return False
 
 
-def handle_result(log_entry):
-    if log_entry['service'] == 'introduce':
-        logging.info(f'Got introduce result from ID:{log_entry["ID"]}')
-        logging.info(f'-> {log_entry}')
 
-        if log_entry['result'] != 'already exists':
-            pass
+def handle_result(e):
+    if e[2]['service'] == 'introduce':
+        logging.info(f'INTRODUCE')
+        logging.info(f'-> {e}')
+
+        create_E2E_feed(e[2]['result'])
     else:
-        logging.info(f'got result:{log_entry["result"]} from ID:{log_entry["ID"]} -> {log_entry}')
-        logging.info(f'-> {log_entry}')
+        logging.info(f'result -> {e}')
 
 
 def handle_new_results():
@@ -581,20 +587,16 @@ def on_deleted(event):
 
 def on_modified(event):
     global c_server_dict
-    logging.debug(f"Modified: {event.src_path}")
+    logging.info(f"Modified: {event.src_path}")
 
     # if f'{event.src_path[2:]}' == isp_log:
 
     if f'{event.src_path[2:]}' == f'{client_config["location"]}/{client_config["isp"]}.pcap':
         handle_new_results()
     else:
-        print(f'{event.src_path[2:]}')
+
         for s in c_server_dict.values():
             if s.s_c_feed == f'{event.src_path}':
-
-                print('E2E INCOMING')
-
-
                 handle_new_s_results(s)
         # s = c_server_dict[f'{event.src_path[2:]}']
         # handle_new_s_results(s)
@@ -667,7 +669,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
     next_request_ID = 0
     highest_result_ID = 0
@@ -680,7 +682,7 @@ if __name__ == '__main__':
     c_server_dict = dict()
 
     client_config = read_config("fff-conf.json")
-    print(client_config)
+
 
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'
     init()
@@ -705,3 +707,14 @@ if __name__ == '__main__':
 
     logging.info('dumping feed...')
     pcap.dump(client_log)
+    print('------------------------------')
+    pcap.dump(isp_log)
+    print('------------------------------')
+
+    for s in c_server_dict.values():
+        pcap.dump(s.c_s_feed)
+        print('------------------------------')
+
+        pcap.dump(s.s_c_feed)
+        print('------------------------------')
+
