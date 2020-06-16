@@ -499,7 +499,6 @@ def delete_e2e_feed(attributes):
     sclient = s_client_dict[cpk]
 
     os.remove(sclient.E2E_c_s_log)
-    os.remove(sclient.E2E_c_s_key)
     os.remove(sclient.E2E_s_c_log)
     os.remove(sclient.E2E_s_c_key)
 
@@ -752,6 +751,8 @@ def start_watchdog():
     my_observer.start()
     try:
         while True:
+            # TODO Read input for detrucing clients
+
             time.sleep(0.1)
     except KeyboardInterrupt:
         my_observer.stop()
@@ -781,6 +782,39 @@ def read_config(fn):
     return config
 
 
+def extract_client(data):
+    print('extracting client')
+    try:
+        print(s_client_dict)
+        client = s_client_dict[data]
+        return client
+    except Exception as e:
+        print(e)
+        return -1
+
+def detruce_client(client: sClient):
+    global highest_introduce_ID
+    print('detrucing client')
+
+    attributes = {
+        'public_key' : client.name
+    }
+
+    delete_e2e_feed(attributes)
+
+    highest_introduce_ID +=1
+
+    request = {
+        'introduce_ID': highest_introduce_ID,
+        'type': 'server_detruce',
+        'client': client.name
+    }
+
+    wr_feed(server_log, server_key, request)
+    r = replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
+    r.replicate()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
     # parser.add_argument('--keyfile')
@@ -797,6 +831,7 @@ if __name__ == '__main__':
     server_key = 'unknown'
 
     highest_introduce_ID = -1
+
     approved = []
 
     s_client_dict = dict()
@@ -809,6 +844,23 @@ if __name__ == '__main__':
 
     for c in s_client_dict.values():
         logging.info(c.to_string())
+
+    import threading
+
+
+    def get_input():
+        while True:
+            data = input()  # Something akin to this
+            print(f'input::{data}')
+            client = extract_client(data)
+            if client != -1:
+                detruce_client(client)
+            else:
+                pass
+
+
+    input_thread = threading.Thread(target=get_input)
+    input_thread.start()
 
     start_watchdog()
 

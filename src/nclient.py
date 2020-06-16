@@ -105,6 +105,9 @@ def handle_input(msg):
         if msg.lower() == 'refresh':
             logging.info('Refreshing')
             refresh()
+        elif msg.lower() == 'read':
+            logging.info('Reading requests')
+            read_request()
         else:
             logging.warning('Input not matching pattern')
         # win.addstr(f"failed post({msg})")
@@ -129,12 +132,11 @@ def send_request(request: dict):
 
     global c_server_dict
 
-
     if request['service'] == 'introduce':
         if not request['attributes'] in c_server_dict.keys():
-            #register only public key and send this to server
+            # register only public key and send this to server
 
-            #public_key = create_E2E_feed(request['attributes'])
+            # public_key = create_E2E_feed(request['attributes'])
 
             public_key = client_config['name']
 
@@ -160,12 +162,12 @@ def send_request(request: dict):
         print(request['attributes'])
         if request['attributes'] in c_server_dict.keys():
 
-            public_key = delete_E2E_feed(request['attributes'])
+            delete_E2E_feed(request['attributes'])
 
             attributes = {
                 'server': request['attributes'],
                 'client': client_config['name'],
-                'public_key': public_key
+                'public_key': client_config['name']
             }
 
             feed_entry = {
@@ -213,22 +215,24 @@ def wr_feed(f, key, msg):
     replicator.replicate(f'{client_config["location"]}/{client_config["alias"]}.pcap',
                          f'{client_config["isp_location"]}/{client_config["alias"]}.pcap')
 
-def wr_server_feed(msg, server:cServer):
+
+def wr_server_feed(msg, server: cServer):
     logging.info(f'Writing in {server.c_s_feed}: {msg}')
     feed.append_feed(server.c_s_feed, server.c_s_key, msg)
     server.replicator.replicate()
+
+
 def delete_E2E_feed(spk):
     global c_server_dict
     server = c_server_dict[spk]
-
-    pk = feed.get_public_key(server.c_s_key)
 
     os.remove(server.c_s_feed)
     os.remove(server.c_s_key)
     os.remove(server.s_c_feed)
     c_server_dict.pop(spk)
     print(c_server_dict)
-    return pk
+
+
 
 def create_E2E_feed(spk):
     global c_server_dict
@@ -312,7 +316,6 @@ def create_feed():
             'location': client_config['location']
         }
 
-
         logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
     else:
@@ -350,7 +353,6 @@ def create_feed():
             'key': pk,
             'location': client_config['location']
         }
-
 
         logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
@@ -433,13 +435,12 @@ def init():
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
-
                 if isinstance(e[2], dict) and e[2]['type'] == 'init':
                     print(e[2])
                     try:
                         server = e[2]['cserver']
                         rep = e[2]['cserver']['replicator']
-                        creplicator = replicator.Replicator(rep['name'], rep['source'],rep['destination'])
+                        creplicator = replicator.Replicator(rep['name'], rep['source'], rep['destination'])
                         cserver = cServer(server['name'], server['s_c_feed'], server['c_s_feed'], server['c_s_key'], 0,
                                           [], creplicator)
                         c_server_dict[server['name']] = cserver
@@ -464,14 +465,12 @@ def init():
             if e[2] != None:
                 e[2] = cbor2.loads(e[2])
 
-
             if isinstance(e[2], dict) and e[2]['type'] == 'request':
                 logging.debug(f'from init request  ID={e[2]["ID"]}')
                 await_result(e[2]['ID'])
                 next_request_ID = max(int(e[2]["ID"]), next_request_ID)
 
         p.close()
-
 
     logging.info(f'Highest ID: {next_request_ID}')
     pass
@@ -545,13 +544,10 @@ def read_result(ID):
                 logging.debug(f"   hashref={href.hex()}")
                 logging.debug(f"   content={e[2]}")
                 if result_ID_list.__contains__(ID):
-
                     clear_await(ID)
                 handle_result(e)
 
-
     p.close()
-
 
 
 def handle_result(e):
@@ -560,6 +556,8 @@ def handle_result(e):
         logging.info(f'-> {e}')
         if e[2]['result'] != 'declined':
             create_E2E_feed(e[2]['result'])
+    elif e[2]['service'] == 'detruce':
+        logging.info(f'Successfully detruced from server')
     else:
         logging.info(f'result -> {e}')
 
@@ -569,6 +567,55 @@ def handle_new_results():
     global result_ID_list
     for result_ID in result_ID_list:
         read_result(result_ID)
+
+
+def read_request():
+
+    global next_request_ID
+    p = pcap.PCAP(isp_log)
+    p.open('r')
+    for w in p:
+
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+
+        e[0] = pcap.base64ify(e[0])
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            request_ID = e[2]["ID"]
+
+            print(f'req_id:{request_ID},next:{next_request_ID}')
+            if request_ID == next_request_ID:
+                print(f'handling request from server')
+                next_request_ID += 1
+                handle_request(e[2])
+
+    p.close()
+
+
+def handle_request(log_entry):
+    if log_entry['service'] == 'detruce':
+        delete_E2E_feed(log_entry['attributes'])
+        result = 'done'
+    else:
+        result = -1
+
+    response = {
+        'ID': log_entry['ID'],
+        'introduce_ID': log_entry['introduce_ID'],
+        'type': 'result',
+        'service' : log_entry['service'],
+        'attributes' : log_entry['attributes'],
+        'result': result
+    }
+
+    wr_feed(client_log, client_key, response)
+
 
 
 def handle_new_s_results(server: cServer):
@@ -683,7 +730,6 @@ if __name__ == '__main__':
 
     client_config = read_config("fff-conf.json")
 
-
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'
     init()
 
@@ -717,4 +763,3 @@ if __name__ == '__main__':
 
         pcap.dump(s.s_c_feed)
         print('------------------------------')
-
