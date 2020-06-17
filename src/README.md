@@ -14,12 +14,12 @@ Installing all packages:
 
 Until today the implementation supports one predefined client, ISP and server for the given situation. All configurations are stored in the corresponding config files. To start each node invoke as followed
     
-    python3 nisp.py isp-config.json
+    python3 nisp.py isp001-config.json
     
 For now it is important to run the ISP code first, since it generates also the folders for "all" clients and servers. Afterwards start client and server as followed:
 
-    python3 nclient.py client-config.json
-    python3 nserver.py server-config.json
+    python3 nclient.py fff111-config.json
+    python3 nserver.py ser001-config.json
     
 If all consoles show the text "Node is setup" you are ready to go!
 

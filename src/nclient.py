@@ -711,8 +711,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
     # parser.add_argument('--keyfile')
     # parser.add_argument('pcapfile', metavar='PCAPFILE')
-    parser.add_argument('name')
-    parser.add_argument('peer')
+    parser.add_argument('config')
 
     args = parser.parse_args()
 
@@ -728,7 +727,7 @@ if __name__ == '__main__':
 
     c_server_dict = dict()
 
-    client_config = read_config("fff-conf.json")
+    client_config = read_config(args.config)
 
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'
     init()

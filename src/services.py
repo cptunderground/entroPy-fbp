@@ -18,7 +18,7 @@ class Service():
         :return: every registered server key
         '''
         if str(attributes).lower() == 'all':
-            conf = json.loads(open("isp-conf.json").read())
+            conf = json.loads(open("isp001-config.json").read())
 
             return conf["server_keys"]
         else:
