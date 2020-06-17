@@ -137,3 +137,7 @@ For this type as followed in the server console:
     --detruce -cli001
     
 cli001 is the key of the client. 
+Now either read the server request in the client console by typing *read* into it or try to send a new request, the cleint will
+ detect the detruce and inform:
+ 
+    06/17/2020 03:16:26 PM Server:ser001 detruced from you! You can no longer communicate with it. Try introducing!
