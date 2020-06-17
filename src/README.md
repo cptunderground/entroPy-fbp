@@ -12,7 +12,8 @@ Installing all packages:
 
     packages: 
 
-Until today the implementation supports one predefined client, ISP and server for the given situation. All configurations are stored in the corresponding config files. To start each node invoke as followed
+Until today the implementation supports one predefined client, ISP and server for the given situation. All configurations are stored in the corresponding config files. 
+Make sure the feeds folder is **empty**! To start each node invoke as followed
     
     python3 nisp.py isp001-config.json
     
