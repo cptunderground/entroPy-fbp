@@ -1,0 +1,8 @@
+{
+    "name": "client01",
+    "alias": "client01_isp",
+    "key": "client01_isp.key",
+    "location": "feeds/client01",
+    "isp": "isp_client01",
+    "isp_location": "feeds/isp"
+}

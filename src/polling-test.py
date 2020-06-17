@@ -111,7 +111,7 @@ def on_modified(event):
 
 
 def on_moved(event):
-    print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    print(f"ok ok ok, someone moved {event.src_path} to {event.destination}")
 
 
 def test_watchdog():
@@ -237,10 +237,133 @@ def test_logging(bug):
 
 
 if __name__ == '__main__':
+
+
+
+
     # write_feed_test()
     # test_init()
     # polling_test()
     # test_watchdog()
     # test_read_BW()
     # test_logging(True)
-    test_logging(False)
+    # test_logging(False)
+    '''
+    print(os.listdir("feeds/fff111"))
+
+    for file in os.listdir("feeds/fff111"):
+        print(os.path.isfile(os.path.join("feeds/fff111", file)))
+        if os.path.isfile(os.path.join("feeds/fff111", file)) and file.endswith(".pcap"):
+            print(file)
+
+    # pcap.dump("feeds/fff111/fff111_ser001.pcap")
+    # pcap.dump("feeds/fff111/ser001_fff111.pcap")
+    # pcap.dump("feeds/fff111/isp001_fff111.pcap")
+    pcap.dump("feeds/isp001/isp001_ser001.pcap")
+    print('----------------------------------------------------------------')
+    print('----------------------------------------------------------------')
+    print('----------------------------------------------------------------')
+
+    pcap.dump('feeds/ser001/ser001_fff111.pcap')
+    print('----------------------------------------------------------------')
+    print('----------------------------------------------------------------')
+    print('----------------------------------------------------------------')
+
+    pcap.dump('feeds/isp001/ser001_isp001.pcap')
+    
+    # pcap.dump("feeds/client01/isp_client01.pcap")
+    
+
+    pcap.dump("feeds/ser001/isp001_ser001.pcap")
+    
+    
+    print("####################")
+    print("####################")
+    print("####################")
+    print("####################")
+
+    p = pcap.PCAP("feeds/fff111/fff111_isp001.pcap")
+    p.open('r')
+
+    fid, signer = feed.load_keyfile("feeds/fff111/fff111_isp001.key")
+    print(f'fid: {pcap.base64ify(fid)}')
+    print(f'signer: {pcap.base64ify(signer.sk)}')
+
+    to_append = None
+    to_write = None
+    for w in p:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+
+
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            if e[2]['ID'] == 2:
+                print(e)
+                print(e[1])
+                print(pcap.base64ify(e[1]))
+                to_append = w
+                to_write = e[2]
+        print('--------------')
+
+
+
+    print(to_append)
+
+    fid, signer = feed.load_keyfile("lib/new.key")
+    print(f'fid: {pcap.base64ify(fid)}')
+    print(f'signer: {pcap.base64ify(signer.sk)}')
+    f = feed.FEED("lib/new.pcap")
+
+    print("#################################")
+    other_feed = pcap.PCAP("lib/new.pcap")
+    other_feed.open('r')
+
+
+    #f._append(to_append)
+    #f.write(to_write)
+
+
+
+    for w in other_feed:
+        # here we apply our knowledge about the event/pkt's internal struct
+        e = cbor2.loads(w)
+        href = hashlib.sha256(e[0]).digest()
+        e[0] = cbor2.loads(e[0])
+        # rewrite the packet's byte arrays for pretty printing:
+        e[0] = pcap.base64ify(e[0])
+
+        fid = e[0][0]
+        seq = e[0][1]
+        if e[2] != None:
+            e[2] = cbor2.loads(e[2])
+
+        if isinstance(e[2], dict) and e[2]['type'] == 'request':
+            if e[2]['ID'] == 2:
+
+                print(pcap.base64ify(e[1]))
+
+        print(e)
+        print('--------------')
+
+    f = feed.FEED("./feeds/ser001/fff111_ser001.pcap", create_if_notexisting=True)
+    f._append(to_append)
+    
+    '''
+
+    print("---------------------")
+    pcap.dump("./feeds/ser001/ser001_isp001.pcap")
+    print("---------------------")
+    pcap.dump("./feeds/fff111/isp001_fff111.pcap")
+    print("---------------------")
+    pcap.dump("./feeds/fff111/fff111_isp001.pcap")
+    print("---------------------")
+    pcap.dump("./feeds/isp001/isp001_ser001.pcap")

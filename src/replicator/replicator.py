@@ -2,20 +2,39 @@ from shutil import copy2
 import os
 
 class Replicator():
-    def __init__(self, source_dir, dest_dir, log):
-        self.source_path = f'feeds/{source_dir}/{log}'
-        self.dest_path = f'feeds/{dest_dir}/{log}'
+    def __init__(self, name, source, destination):
+        self.name = name
+        self.source_path = f'{source}'
+        self.destination = f'{destination}'
+
 
     def replicate(self):
-        if os.path.exists(self.dest_path):
+        rep_file = f'{self.destination}/{self.name}'
+        if os.path.exists(rep_file):
             print('exists')
             pass
         else:
-            f = open(self.dest_path, 'w+')
+            if os.path.exists(self.destination):
+                pass
+            else:
+                os.mkdir(self.destination)
+
+            f = open(rep_file, 'w+')
             f.close()
-        copy2(self.source_path, self.dest_path)
+        copy2(self.source_path, rep_file)
+        print('Replication done')
 
-
+def replicate(src,dst):
+    try:
+        if os.path.exists(dst):
+            print('exists')
+            pass
+        else:
+            f = open(dst, 'w+')
+            f.close()
+        copy2(src, dst)
+    except:
+        print('could not replicate')
 def test_replicate():
     src = f'c/client01_isp.pcap'
     dst = f'i/client01_isp_cp.pcap'
