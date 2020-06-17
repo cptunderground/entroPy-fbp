@@ -133,30 +133,30 @@ def send_request(request: dict):
     global c_server_dict
 
     if request['service'] == 'introduce':
-        if not request['attributes'] in c_server_dict.keys():
+        #if not request['attributes'] in c_server_dict.keys():
             # register only public key and send this to server
 
             # public_key = create_E2E_feed(request['attributes'])
 
-            public_key = client_config['name']
+        public_key = client_config['name']
 
-            attributes = {
-                'server': request['attributes'],
-                'client': client_config['name'],
-                'public_key': public_key
-            }
+        attributes = {
+            'server': request['attributes'],
+            'client': client_config['name'],
+            'public_key': public_key
+        }
 
-            feed_entry = {
-                'ID': next_request_ID,
-                'type': 'request',
-                'source': args.name,
-                'destination': request['destination'],
-                'service': request['service'],
-                'attributes': attributes
-            }
-        else:
-            logging.warning(f'Feed for {request["attributes"]} already exists')
-            return
+        feed_entry = {
+            'ID': next_request_ID,
+            'type': 'request',
+            'source': client_config['name'],
+            'destination': request['destination'],
+            'service': request['service'],
+            'attributes': attributes
+        }
+    #else:
+    #    logging.warning(f'Feed for {request["attributes"]} already exists')
+        #return
 
     elif request['service'] == 'detruce':
         print(request['attributes'])
@@ -173,7 +173,7 @@ def send_request(request: dict):
             feed_entry = {
                 'ID': next_request_ID,
                 'type': 'request',
-                'source': args.name,
+                'source': client_config['name'],
                 'destination': request['destination'],
                 'service': request['service'],
                 'attributes': attributes
@@ -185,7 +185,7 @@ def send_request(request: dict):
         feed_entry = {
             'ID': next_request_ID,
             'type': 'request',
-            'source': args.name,
+            'source': client_config['name'],
             'destination': request['destination'],
             'service': request['service'],
             'attributes': request['attributes']
@@ -231,7 +231,6 @@ def delete_E2E_feed(spk):
     os.remove(server.s_c_feed)
     c_server_dict.pop(spk)
     print(c_server_dict)
-
 
 
 def create_E2E_feed(spk):
@@ -557,6 +556,7 @@ def handle_result(e):
         if e[2]['result'] != 'declined':
             create_E2E_feed(e[2]['result'])
     elif e[2]['service'] == 'detruce':
+        logging.info(f'-> {e}')
         logging.info(f'Successfully detruced from server')
     else:
         logging.info(f'result -> {e}')
@@ -570,7 +570,6 @@ def handle_new_results():
 
 
 def read_request():
-
     global next_request_ID
     p = pcap.PCAP(isp_log)
     p.open('r')
@@ -609,13 +608,14 @@ def handle_request(log_entry):
         'ID': log_entry['ID'],
         'introduce_ID': log_entry['introduce_ID'],
         'type': 'result',
-        'service' : log_entry['service'],
-        'attributes' : log_entry['attributes'],
+        'service': log_entry['service'],
+        'attributes': log_entry['attributes'],
         'result': result
     }
 
+    logging.warning(
+        f'Server:{log_entry["attributes"]} detruced from you! You can no longer communicate with it. Try introducing!')
     wr_feed(client_log, client_key, response)
-
 
 
 def handle_new_s_results(server: cServer):
@@ -711,8 +711,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-Client for FBP')
     # parser.add_argument('--keyfile')
     # parser.add_argument('pcapfile', metavar='PCAPFILE')
-    parser.add_argument('name')
-    parser.add_argument('peer')
+    parser.add_argument('config')
 
     args = parser.parse_args()
 
@@ -728,7 +727,7 @@ if __name__ == '__main__':
 
     c_server_dict = dict()
 
-    client_config = read_config("fff-conf.json")
+    client_config = read_config(args.config)
 
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'
     init()
@@ -744,6 +743,7 @@ if __name__ == '__main__':
         inp = input()
         request = handle_input(inp)
         if request != None:
+            read_request()
             send_request(request)
         else:
             print('')

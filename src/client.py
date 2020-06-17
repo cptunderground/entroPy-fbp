@@ -604,7 +604,7 @@ if __name__ == '__main__':
 
     c_server_dict = dict()
 
-    client_config = read_config("fff-conf.json")
+    client_config = read_config("cli001-config.json")
     print(client_config)
 
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'

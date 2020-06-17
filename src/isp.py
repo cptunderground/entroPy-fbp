@@ -735,7 +735,7 @@ if __name__ == '__main__':
     logging.debug(f'ISP-KEY:{isp_key}')
     logging.debug(f'Client-LOG:{client_log}')
 
-    isp_config = json.loads(open("isp-conf.json").read())
+    isp_config = json.loads(open("isp001-config.json").read())
     init()
     init_clients()
     init_servers()

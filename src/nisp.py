@@ -90,7 +90,7 @@ def init():
     global server_dict
 
     global isp_config
-    name = args.name
+    name = isp_config['ipk']
 
     # Create isp_client feeds
     for key in isp_config['client_keys']:
@@ -652,7 +652,7 @@ def send_request(request: dict):
     feed_entry = {
         'ID': next_request_ID,
         'type': 'request',
-        'source': args.name,
+        'source': isp_config['ipk'],
         'destination': request['destination'],
         'service': request['service'],
         'attributes': request['attributes']
@@ -894,7 +894,7 @@ def handle_approved_introduce(server: Server):
             feed_entry = {
                 'ID': e[2]['request_ID'],
                 'type': 'result',
-                'source': args.name,
+                'source': isp_config['ipk'],
                 'destination': 'does not matter',
                 'service': 'introduce',
                 'result': result,
@@ -920,7 +920,7 @@ def handle_approved_introduce(server: Server):
             feed_entry = {
                 'ID': e[2]['request_ID'],
                 'type': 'result',
-                'source': args.name,
+                'source': isp_config['ipk'],
                 'destination': 'does not matter',
                 'service': 'detruce',
                 'result': result,
@@ -1176,19 +1176,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Demo-ISP for FBP')
     # parser.add_argument('--keyfile')
     # parser.add_argument('pcapfile', metavar='PCAPFILE')
-    parser.add_argument('name')
-    parser.add_argument('peers')  # TODO LIST
+    parser.add_argument('config')
+
     # parser.add_argument('--debug')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-
-    # TODO config file
-    client_names = ['client']  # 01', 'client02', 'client03', 'client04']
-    server_names = ['ser001']  # 01', 'server02', 'server03', 'server04']
-
-    with open('peers.json', 'w') as fp:
-        json.dump(client_names, fp)
 
     client_dict = dict()
     sub_client_dict = dict()
@@ -1208,7 +1201,7 @@ if __name__ == '__main__':
     logging.debug(f'ISP-KEY:{isp_key}')
     logging.debug(f'Client-LOG:{client_log}')
 
-    isp_config = json.loads(open("isp-conf.json").read())
+    isp_config = json.loads(open(args.config).read())
     init()
     init_clients()
     init_servers()

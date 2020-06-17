@@ -1,7 +1,7 @@
 {   
     "ipk":"isp001",
     "location": "./feeds/isp001",
-    "client_keys": ["fff111"],
+    "client_keys": ["cli001"],
     "server_keys": ["ser001","ser002"],
 
     "cli001":
