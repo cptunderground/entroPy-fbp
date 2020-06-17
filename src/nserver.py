@@ -852,11 +852,19 @@ if __name__ == '__main__':
         while True:
             data = input()  # Something akin to this
             print(f'input::{data}')
-            client = extract_client(data)
-            if client != -1:
-                detruce_client(client)
+            detruce_pattern = r'^--([a-zA-Z0-9 ]+) -([a-zA-Z0-9 ]+)'
+            matching_detruce = re.match(detruce_pattern, data)
+
+
+            if matching_detruce:
+                if matching_detruce.group(1).lower() == 'detruce':
+                    client = extract_client(matching_detruce.group(2))
+                    if client != -1:
+                        detruce_client(client)
+                    else:
+                        pass
             else:
-                pass
+                print(f'not matching pattern: invoke with --service -destination')
 
 
     input_thread = threading.Thread(target=get_input)
