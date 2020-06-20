@@ -1,5 +1,25 @@
 # FBP API
 
+## Init
+    { 'type': 'init', 'alias':'client01', 'public-key':'sd..5s', 'location': './feeds/client01/i_s.pcap }
+
+## Introduce-Inquiry ISP
+    { 'type': 'introduce-inquiry', 'public-key':'d0..b8', 'replication-location': './feeds/client01/s_c_replication.pcap }
+
+## Introduce-Inquiry Server
+    { 'type': 'introduce-inquiry', 'mux_ID': 1, 'public-key':'d0..b8', 'location': './feeds/client01/c_s.pcap }
+
+## Introduce-Approval Server
+    { 'type': 'introduce-approval', 'public-key':'s1..gr', 'replication-location': './feeds/isp/c_s_replication.pcap }
+
+## Introduce-Approval ISP
+    { 'type': 'introduce-approval', 'public-key':'s1..gr', 'replication-location': './feeds/isp/c_s_replication.pcap }
+
+
+## Detruce
+    { 'type': 'detruce-inquiry', 'public-key':'d0..b8', 'location': './feeds/client01/c_i.pcap/ }
+
+
 ## Introduce/Detruce Client
 ### 1:
 |Client   	                |ISP_C   	            |ISP_S   	                |Server   	            |   	|
