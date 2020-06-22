@@ -1,0 +1,13 @@
+\chapter{Implementation}
+\section{Feeds}
+Given by Prof. Tschudin explain structure
+\section{RPC}
+API with all methods in context of feeds and peers
+Adapted from RPyC so in the service class all services can be defined and have no impact on
+\section{Introducing}
+how is it implemented
+\section{Replication}
+Replicator Class that is given to each 'feed' so every time on this feed is operated by wr replicate to predefined location
+\section{Multiplexing}
+mux package idea is to only pass through the request then write in 'replication' feed and work from there.
+also for answering channel
