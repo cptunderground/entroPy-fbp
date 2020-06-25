@@ -48,19 +48,31 @@ Since now a contract is established, we need to know what happens in the tin can
 \pagebreak
 
 \section{Replicated Feeds}
-Feeds are append only logs/files. Which means there can only be written to or read from. There is no option to delete entries except by deleting the whole file. So a feed acts as database for all the requests made or information given in the context of the connection between client and isp.\\
-\textit{more detailed information about schema of feed, hashchain, sequence and content}\\
-\textit{also give context to keys - cryptography - signing}\\
-\textit{role of the feeds in fbp and introducing the idea of feed pairs.}
-Given in the contract these feed IDs are already defined and each node knows where to store or write its own information and read the peers information.
-Result:
+From the SSB API the following sentence can be exctracted: "A feed is a signed append-only sequence of messages. Each identity has exactly one feed.\footnote{\url{https://scuttlebot.io/more/protocols/secure-scuttlebutt.html}}"
+So what do these properties mean?
+\begin{itemize}
+    \item signed message: Signing a message means the encryption of plain text with the sender's private key to a cipher text. The crypto text can be deciphered with the sender's public key.
+    \item append-only: Under append-only we understand that this sequence can not be forged. So there is no possible way to modify or delete any entries that were appended at any time\footnote{Feeds - \url{https://ssbc.github.io/scuttlebutt-protocol-guide/}}. This append-only property is realzied with a hash chain which referenzes the hash value of the perviously generated message.\footnote{Feeds - \url{https://ssbc.github.io/scuttlebutt-protocol-guide/}}
+    \item identity - one feed: Meant here is the perviously mentioned ID centric architecture. Per identity (key) is only a single feed mapped, where every, and I mean every, information you created or used in the SSB universe is stored.
+\end{itemize}
+Simplified a schema can be pictured, in the SSB feed is much going on but an adapted simplified version is more than sufficient for this thesis.
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{feed_schema}
+    \caption{A schematic simplified feed.}
+    \label{fig:feed_schema}
+\end{figure}
+
+So what can be derived from these information? Signing ensures that you can trust an identity. The append-only property underlines this trust by guaranteeing completness of the information read in a feed. ID centric feeds ensure that this feed belongs to exactly one identity but there is the sticking point. Since the replication of the SSB protocol always replicate the whole feed to all peers (hops noch angeben) of a single identity there is a massive load on the wire for big feeds. This causes latency and long scuttling time (feed update). \\
+By splitting the feeds into smaller feeds this can be bypassed and the effective communication between two parties bundled in the already mentioned feed pairs. Resulting we have a schema like this:
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{fbp_v0_1_Schema}
     \caption{Full contract between client and ISP with feeds.}
     \label{fig:contract_cli_isp}
 \end{figure}
+For the skae of clarity only the situation between client and ISP is given. since for server and isp it is the same. As you can see. The replicator or the replication process has it first apperance. As concept, there is some sort of replicator instance or procedure that replicates the feeds to the corresponding address or location. We have a closer look in the implementation.\\
 
 Having this setup the next step is to have a possibility to communicate, so the client can request information from the isps real database
 
@@ -95,24 +107,27 @@ Seen in the picture above, client cli001 makes a request of the echo service wit
 %The next step was to include servers with services. Also here the Prerequisite and contract situation changed.
 \section{Introducing and Detrucing}
 \subsection{Introducing}
+Recaping the tin can phone story: The idea of introducing is to get in contact with a new friend, where your bestfriend introduces you to him. You and your new friend handcraft a new tin can phone. Since the cord only is as long as it reaches your bestfriend, he connects you to your newly aquired friend. \\
+
+So the general idea of introducing in context of the feed bundling protocol is onboarding to a new server over your ISP. This approach differs from the commonly spread pubublish and subscribe (pub/sub) architecture. Whereas the server has no choice to decline a client in the pub sub model this is a foundation of the introduce detruce model. More technical
 General Idea - 
-onboarding to a server. Instead of following server - introduce to server. differs from pub sub pattern in the way that the server has the choice to accept or decline a client. in either way accept or decline an answer is provided to the client.
+onboarding to a server. Instead of following server - introduce to server. differs from pub sub pattern in the way that the server has the choice to accept or decline a client. As we were talking of rpc before, in either way accept or decline an answer is provided to the client, else it would violate the rpc clauses.
 
-procedure - cli001 sends rpc request with service:introduce, attribute:ser001 to isp001.
-isp001 now makes rpc request with information about client and the fact, taht it wants to introduce itself to ser001 since they have a contract. 
-if ser001 accepts introduce and creates from information sub feed - feed with communication direct between client and server.
-result is contract information for client given by server: feed ID etc.
-else ser001 declines, so result is no contract.
-isp001 gets the result and passes this result to the initial rpc request from the client. client now gets result - also builds subfeed according to contract and connection is established. now if client wants to use a service from server it only writes the request in the corresponding feed and procedure is the same as described in RPC Section.
+So lets tank about the procedure in more detailed way: cli001 sends a rpc request to the introduce service of his ISP. this request needs an attribute which specifies the server the client wants to be intrduced to. In this particualr case ser001.
+isp001 invokes the introduce service, which now makes rpc request with information about client and the fact, that it wants to introduce itself to ser001. and sends this to the server. Now the server has the coice to either accept or decline the introduce inquiry. If ser001 accepts the introduce it will directly create the feed pair on his side (the two tin cans). afterwards it sends a confirmation or acceptance back to the ISP. Additionally to just the statement that the client was accepted the whole contract information for client is given by server: feed ID etc. 
+Or the server declines the introducing approach, so the result is rejection followed by no or some sort of empty contract.
+
+Either way isp001 gets the result and passes this result to the initial rpc request from the client. The client now gets his result. According to the state of acceptance or rejection it builds his feed pair in accordance with contract. finally the connection is established. Now if client wants to use a service from server it only writes the request in the corresponding feed and the procedure is the same as described in RPC Section.
 \\
-important addition, only client can introduce, so only client can ask server for a contract. server has no information about any cient in the network at initial state.
+An important addition, only client can introduce itself. The server has no knowledge about clients and also no way to get knowledge about clients, so only client can ask server for a contract. 
+
 \subsection{Detrucing}
-Detrucing as a newly invented word by me, since normally after you introduced yourself to a person there is no way to make this unhappened. it acts the same for unfollow in a pub sub domain. But in contrary to the introduce both parts of the contract can detruce. \\
-precisely either client or server can send rpc request to isp service detruce which gets propagated to opponent and results in terminating the whole contract. -> deleting keys and feeds.
+Detrucing as a newly invented word by me, since normally after you introduced yourself to a person there is no way to make this unhappened. It acts the same for unfollow in a pub sub domain. But in contrary to the introduce both parts of the contract can detruce. \\
+precisely either client or server can send a rpc request to the ISP service detruce which gets propagated to the opponent descibed above in the introducing part and results in terminating the whole contract. Result of this action is deleting keys and feeds. There is no way to decline a detruce service request.
 \\
-Important addition: after detruce client can again introduce to server.
-
-Resulting picture:
+Also here an important addition, after detrucing from either side, the client can yet again introduce itself to server.
+\\
+Taken these descriptions a new schema of the network derives.
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{intro_detru}
@@ -121,25 +136,6 @@ Resulting picture:
 \end{figure}
 
 \pagebreak
-\section{Replication}
-locally in testing environement this above works. for real world application there needs to be a replication mechanism which propagates feeds to destination.
-
-feed replication works at each write to the feed, to the  defined location.\\
-
-API\\
-
-could be erweitert to many destinations with an easy effort
-
-resulting picture:
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\textwidth]{replicator}
-    \caption{Replicated Feeds}
-    \label{fig:replication}
-\end{figure}
-
-seen that e2e feed pair between client and server now are replicated over isp node.\\ 
-now bundling can be provided.
 
 %\section{0.4}
 %added indirect communication from client to server over ISP\\
