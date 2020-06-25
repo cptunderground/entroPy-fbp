@@ -11,6 +11,9 @@ Installing all packages:
     pip3 install [package]
 
     packages: 
+    - cbor2
+    - pynacl
+    - watchdog
 
 Until today the implementation supports one predefined client, ISP and server for the given situation. All configurations are stored in the corresponding config files. 
 Make sure the feeds folder is **empty**! To start each node invoke as followed
@@ -19,7 +22,7 @@ Make sure the feeds folder is **empty**! To start each node invoke as followed
     
 For now it is important to run the ISP code first, since it generates also the folders for "all" clients and servers. Afterwards start client and server as followed:
 
-    python3 nclient.py fff111-config.json
+    python3 nclient.py cli001-config.json
     python3 nserver.py ser001-config.json
     
 If all consoles show the text "Node is setup" you are ready to go!

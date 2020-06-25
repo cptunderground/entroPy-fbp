@@ -1,23 +1,28 @@
 \chapter{Concepts and Architecture}
 
-%\section{Prerequisite}
-
-
+\section{Prerequisite}
+As describet in the chapter Secure Scuttlebutt we have an ID centric single feed driven environement. This prerequisite changes from the beginning. Central idea of the Feed Bundling Protocol is to split up this ID centric environement into replicated feed pairs, where two participants hold at least one of such a pair. This pair contains the whole dialog between two nodes which have a contract together.\\
+Look at it as a tin can phone from your childhood where you have two cans, strapped together for every friend you want to communicate with. You start with one corded phone to your best friend, the one you trust the most. In one you talk and the can 'saves' everything you say to it. on the other side your friend has the same but can only hear things out of one can and can only talk into the other. Having this, the dialog needs a way or language to express expectations or requests from either side to communicate with each other, where you can declare what you want from each other. After quiet some time it will eventually get boring only talking to this one friend. Luckily your friend is the coolest kid in school and knows everyone and even tells you who he knows. So you decide tho ask your friend if he could introduce you to his other friends. Having that we got the introduce mechanic which adapts exactly this social human behaviour. After your friend has introduced you to one of his friends you and your friend start to build the new tin can phone. But because you are too far away from each other you cannot just have a cord from one to the other. So your best friend is ready as always and helps you by passing to cord trough his house. This corresponds to the replication of the feeds over intermediary connectivity provider. Yet another problem occures, you are not the only one. after quiet some time your bestfriend has so many strings in his house from al his friends which want to talk to that other friend. he repeats all the phones there so he has an enourmous amount of strings going to that other friend. SO he decides to combine all these strings into one and send all messages trough this single one with the information into which can it should come at the end. He multiplexes. Given that little story we can derive concepts and architecture for the tin can phones of the future.
 \section{Contracts}
-First and foremost of the whole connectivity, protocol and bundling, the business contracts between the nodes has to be declared. Throughout the whole process of the these contracts and relationships between each participant got questioned and modified, since this is the most important aspect or basic building block for the whole thesis. 
+Deriving from that little story we see the base in the friendship. the friendship between you and your best friend and the friend ship between your bestriend and his other friend. So first and foremost of the whole connectivity, protocol and bundling, lay the business contracts between the nodes. Throughout the whole process of the these contracts and relationships between each participant got questioned and modified, since this is the most important aspect or basic building block for the whole thesis.\\
 
 \subsection{Client-ISP Contract}
-In the first version of the FBP there are only two participants: Client and ISP. Before connecting, a contract between these two parties has to be closed. In this version it consists of the public key, private key, public key of the opponent and the feed ids of the ISP and Client feed. The public keys act as the name of each client or isp, the private keys are obviously used to write to the feed. The feed IDs act as identifier for in which feed has to be written or from which feed has to be read. \\\\
+
+To build the tin can phone three basic identifiers are needed. First of all you have to trust each other. This accords to the whole juristical contract between the to parties. Next you need to know your names to lable the phone, so you know to who you talk. This refers to the public keys. Since everybody in your house can use the tin phone you also need some sort of secret so your friend know you send the message not your mom. This refers to the private key. Having that you need your two tin cans and two wires. One can stands for one feed and the wire for the replication. But if you do not know the address of your mate you do not know where to put that wire, hence you need that too. The address, as the name is well chosen, refers to the IP-address. To keep things a little easier we perform everything on a localhost in the file system so the address corresponds to a path or location to or of a folder. Last but not least, to distinguish all the cans you lable them accordingly. This leads to a contract like that.\\
+
+
+
 \begin{tabular}{llll} \toprule
     Client-Contract&value&ISP-contract&value\\ \midrule
     actual public key:& cli001 &  actual public key: &isp001  \\ 
     actual private key:& ****** & actual private key:& ****** \\
     actual feed ID:& cli001\_isp001 &actual feed ID:&isp001\_cli001 \\ 
     ISP public key&isp001&Client public key:&cli001\\
-    ISP feed ID&isp001\_cli001&Client feed ID:&cli001\_isp001\\\bottomrule
+    ISP feed ID&isp001\_cli001&Client feed ID:&cli001\_isp001\\
+    ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
 \end{tabular}
 \subsection{ISP-Server Contract}
-Same as in the Client-ISP Contract.\\\\
+Since your best friend has an other friend the contract is the same as in the Client-ISP Contract.\\\\
 \begin{tabular}{llllll} \toprule
     ISP-contract&value&Server-Contract&value\\ \midrule
     actual public key:& isp001 &  actual public key: &ser001   \\ 
@@ -27,10 +32,8 @@ Same as in the Client-ISP Contract.\\\\
     Server feed ID:&ser001\_isp001&ISP feed ID:&isp001\_ser001\\\bottomrule
 \end{tabular}
 \\\\
-Clearly seen, that client and server are 'connected' over isp001 - initial idea was a peer to peer isp network where the ISP-Company distributes the feeds and packages in a defined way - so actually isp could stand for swisscom and the number 001 the actual connectivity provider stations which means cli001 has a contract with isp342 and server has a contract with isp903. And swisscom has internal routing to pass information from isp342 to isp903.
+Clearly seen, that client and server are indirectly 'connected' over isp001, which refers to your best friend. Initial idea of the thesis was a peer to peer Internet Connectivity Provider (ICP) network where the ISP-Company distributes the feeds internally between the ICPs. So in real life there is a contract the ISP e.g. Swisscom and the keys refer to connectivity provider stations or nodes within the ISP newtork of ICPs. Which means cli001 has a connection with icp342 and server has a contract with icp903. But both have a contract with Swisscom, which has internal routing to pass information from icp342 to icp903 - but more in the Outlook section.
 \\
-Result:
-
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{p2p_contracts}
@@ -40,11 +43,11 @@ Result:
 
 
 
-Since now a contract is established, the client should hold information for the ISP and vice versa. This leads to the Feeds.
+Since now a contract is established, we need to know what happens in the tin cans and the wire. This leads to the replicated feeds.
 
 \pagebreak
 
-\section{Feeds}
+\section{Replicated Feeds}
 Feeds are append only logs/files. Which means there can only be written to or read from. There is no option to delete entries except by deleting the whole file. So a feed acts as database for all the requests made or information given in the context of the connection between client and isp.\\
 \textit{more detailed information about schema of feed, hashchain, sequence and content}\\
 \textit{also give context to keys - cryptography - signing}\\

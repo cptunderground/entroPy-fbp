@@ -1,24 +1,19 @@
 % !TEX root = ../Thesis.tex
 \chapter{Introduction}
-
+The world is constantly changing, so is the internet. At this very moment, a movement in networking research is clearly seen. The movement gets away from the well known and proven practices and mesurements of the centralized web and strives for novelty: Distribution. Away from centralised servers, classical routing and routing into a new peer to peer driven, destributed and decentralized web. Secure Scuttlebutt is exactly one of these novelties, which facinate with refreshingly diffrent approaches to solve common networking problems. Yet they are still in developement with a not so easy way ahead.
 \section{Secure Scuttlebutt}
-What is Secure Scuttlebutt - describe on network layer and what application it is suited for.
-\\
-The little story of the founder\\
-Importance
+Secure Sucttlebutt (SSB), invented and created by Dominic Tarr in 2014, is peer to peer communication protocol. His intension to develop such a protocol was a unreliable internet connection on his sailboat. So he decided to write his own offline-friendly secure gossip protocol for social networking, because this is what you do.\footnote{Quellen}\\
+
+Differing to other technologies, Secure Scuttlebutt does not offer a self explanatory out of the box onboarding princip. Comparatively, in other software the user gets either suggestions (e.g. Instagram) or the connectivity and its management is directly given in the software (e.g. default gateway DHCP). In SSB, the user has to connect manually to pub via an invite code, which him or her has to obtain on a different channel than SSB.\footnote{Invide Code - \url{https://ssbc.github.io/scuttlebutt-protocol-guide/}} 
+
 \section{Motivation}
-diffrence to centralized internet as is right now
-Onboarding Problem
-data on wire problem
+As already described, it is problematic for new users to connect to the SSB world, hence a very interesting and promising problem to solve. Further SSB is a great, refreshingly new technologie with a lot of potential. At the moment, it is still in an experimental state and mostly used in pilot projects where the technology is connected to existing domains (social network, git, databases etc.)\footnote{Quelle} Yet I want to explore its potential in a more comercial manner and surrounding.
 \section{Goal}
-Take SSB and bring it into a business perspective.\\
-Solve or reduce onboarding problem\\
-Reduce load on wire since ssb replicates every feed to every peer after each addition - probably better only one feed and distribute to peers over 'centralizied' instance.
+This thesis explores the role of intermediary "connectivity providers" which sell connectivity e.g. to Google or Facebook, through a prototype implementation of a Feed Bundling Protocol. It is based on SSB but rather diffrent in many concepts. Introducing these intermediary participant, where you are connected on start up, will make the onboarding easier, since they will hold all information to create new connections - casually said: The guy who knows some guy which might can help. With later described so-called feed pairs, the ID centric information gathering in one single feed from SSB will be splitted appart. This results in less data in each dialog of two participants and allow bundling.
+
+
 \section{Outline}
-First better description on SSB\\
-Then concepts and architecture of FBP with respect to SSB.\\
-Closer look on code level how it is solved.\\
-in the Evaluation what are problems with these aproached strategies and how to fix them or other ideas.\\
-Finally the conclusion and future work that showed during the process
+
+First a more detailed description on SSB, with focus on the concepts and problems connected to the Feed Bundling Protocol will be given. Then the newly created and adapted concepts as well as architecturial idea of the FBP with respect to SSB are presented. After that we take a closer look on the implemented code and how it is solved. The evaluation covers solved as well as newly generated problems with these aproached strategies and how they could eventuall be fixed. Finally the conclusion and future work that showed during the process.
 
 
