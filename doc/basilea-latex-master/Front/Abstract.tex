@@ -1,8 +1,5 @@
 % !TEX root = ../Thesis.tex
 \chapter{Abstract}
+Aspiring new technologies emerge every day, one of which is Secure Scuttlebutt. Secure Scuttlebutt is a peer-to-peer communication protocol based on ID-centric append-only logs\footnote{Quelle}. The aim of this thesis is to take mechanics from Secure Scuttlebutt and bring it in a more commercial environement by introducing new intermediary service providers (ISP) which sell connectivity to servers. Having a contract with such an ISP makes the initial onboarding much easier than in SBB. 
 
-Mini recap of the whole thesis \\
-- environement\\
-- problem\\
-- goal\\
-- outcome
+By splitting up the ID-centric feeds into feed pairs for every connection, informations on the specific dialogs get bundled and stored independantly. since this is the smallest abstraction it allows again a form of bundling by multiplexing log entries together again into bigger feeds. So the problem of the imense replication work done by SSB is approached differently. 

@@ -1,9 +1,37 @@
 \chapter{Implementation}
+\section{Contracts}
+\begin{tabular}{llll} \toprule
+    Client-Contract&value&ISP-contract&value\\ \midrule
+    actual public key:& cli001 &  actual public key: &isp001  \\ 
+    actual private key:& ****** & actual private key:& ****** \\
+    actual feed ID:& cli001\_isp001 &actual feed ID:&isp001\_cli001 \\ 
+    ISP public key&isp001&Client public key:&cli001\\
+    ISP feed ID&isp001\_cli001&Client feed ID:&cli001\_isp001\\
+    ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
+\end{tabular}
+\subsection{ISP-Server Contract}
+Since your best friend has an other friend the contract is the same as in the Client-ISP Contract.\\\\
+\begin{tabular}{llllll} \toprule
+    ISP-contract&value&Server-Contract&value\\ \midrule
+    actual public key:& isp001 &  actual public key: &ser001   \\ 
+    actual private key:& ****** & actual private key:& ******  \\
+    actual feed ID:& isp001\_ser001 &actual feed ID:&ser001\_isp001\\ 
+    Server public key:&ser001&ISP public key:&isp001\\
+    Server feed ID:&ser001\_isp001&ISP feed ID:&isp001\_ser001\\\bottomrule
+\end{tabular}
 \section{Feeds}
 Given by Prof. Tschudin explain structure
 \section{RPC}
 API with all methods in context of feeds and peers
 Adapted from RPyC so in the service class all services can be defined and have no impact on
+\subsection{Send Request}
+Format of request and api of method
+\subsection{Read Request}
+Format of request and api of method
+\subsection{Send Result}
+Format of request and api of method
+\subsection{Read Result}
+Format of request and api of method
 \section{Introducing}
 how is it implemented
 \section{Replication}
