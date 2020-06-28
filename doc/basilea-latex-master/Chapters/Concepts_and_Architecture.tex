@@ -54,22 +54,9 @@ Having this setup, the next step is to have a possibility to communicate, so the
 
 \pagebreak
 \section{Remote Procedure Call}
-General explanaiton of RPC.
-
-
-Resulting schema of the API and descriptions given above:
-
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\textwidth]{rpc}
-    \caption{A Remote Procedure Call by cli001 to isp001.}
-    \label{fig:contract_cli_isp}
-\end{figure}
-
-
-Picture description: -> will be splited into above sections
-
-Seen in the picture above, client cli001 makes a request of the echo service with the attribute: String to echo. This is passed to the send\_request function which assigns an unique ID for this request, resulting from the already given ids in the feed pair. Also merges type, id, service, and attributes into a request (a defined datastructure), writes appends this as a new log entry to the feed and saves the ID for keeping track of open requests. isp001 now detects a change on the feed cli001\_isp001 and invokes the read\_request method which takes the request appart and evaluates the service. Now the request gets handled and the wanted value returned. After that send result is invoked. It is similar to the send request, difference is the type and the result is also appended to the result datastructure. Now again, writing a new log entry to the feed with the given content. cli001 is notified that the isp001\_cli001 feed is changed. so read result is invoked and the result gets either to the program, where it was requested or printed to the client.
+As explained in the section Related Work, Remote Procedure Calls are useful paradigm for providing communication across a
+network between programs.\footnote{Birrel, Nelson}. It faces many challenges, which are not important for this state of the developement of the feed bundle protocol. So the RPC used in this section is a very simplified version.\\
+The Idea is to have a caller, in our case the client and a callee, the ISP or server. Having this kind of request–response protocol. An RPC is initiated by the caller, which sends a request to a callee to execute a specified procedure with given attributes. In our case these specified procedures are called services. By only having one such service e.g. the echo-service, which just echoes the attributes back to the caller we ensure the RPC-protocol works as defined. The, in the next section described, introducing and detrucing mechanics can also be summarized in such services, where the caller makes an RPC-request to the e.g. introduce-service with the needed parameters. 
 
 %\section{v0.2}
 %The next step was to include servers with services. Also here the Prerequisite and contract situation changed.
@@ -103,17 +90,10 @@ A new diagram of the network can be derived using these descriptions.
 %\section{0.4}
 %added indirect communication from client to server over ISP\\
 \section{Bundling}
-taking again a look at the real world problem the isp has arbitrary many clients and many of them want to cumminicate with the same server. Idea: bundling all e2e feeds to same server into isp-server feed.
--> load on wire problem
+Taking again a look at the real world problem, the ISP will have arbitrary many clients and many of them want to communicate with the same server. So instead of repeating each end to end feed pair over the ISP to the server, the new requests will be sent through a single feed pair between the ISP and server. This reduces the amount of replication work enormous.
 
 \subsection{Adapted Introducing and Detrucing}
-introducing to server same - after server accept server generates both feeds request and result feed - sends contract to isp and isp generates result feed and replicates to cli - finally client generates request feed and replicates to isp.
-
-
-\subsection{Multiplexing and Demultiplexing}
-requests from client same way to isp. but isp does not replicate feed anymore. it takes whole log entry, signed by client and mulutiplexes into a new log entry with a mux type content and signs this - mutliplexing. at server, server takes this mux type and extracts whole request feed entry and appends bytes to request feed from client - demultiplexing. handles request and writes result to result feed. from there the whole entry gets again multiplexed in the ispser feed. at isp isp demux entry and also appends bytewise to result feed. replicates to cli and cli can use result.
-
-Resulting Schema:
+The introducing and detrucing idea stays the same, whereas the replication process is changed. After some server accepts a client, the server generates the whole feed pair. But instead of replicating to the ISP, nothing happens. To close the introduce request, the server sends the contract to the ISP and there the ISP generates the feed, which holds data from the server to the client. It is the same feed as in the server but it is not replicated over the general replication instance. Finally the client gets the result and generates the feed which holds the data from the client to the server. The feed pair for client-server communication gets normally replicated between client and ISP. Whereas between ISP and server a new way of replication is given.
 
 \begin{figure}
     \centering
@@ -122,6 +102,12 @@ Resulting Schema:
     \label{fig:mux}
 \end{figure}
 
+\subsection{Multiplexing and Demultiplexing}
+So now we look at the communication between a client and a server. Requests from the client get transfered the same way to the ISP as before. Now instead of just forward the updated feed, by replicating to the server, the ISP detects new log entries and multiplexes these into a new log entry.
+More accurate, the ISP generates a log entry signed by itself, where the content of it is the whole log entry signed by the client. This log entry is written to the ISP-server feed and replicated. The server detects the change on the ISP-server feed and takes this log entry. The multiplexed log entry, which belongs into a client-server feed is extracted and appended to the client-server feed. This step is called demultiplexing. From here we are again at the situation before. A change in the client-server feed is given and the request gets handled. The result is written to the server-client feed and again not replicated. From there the whole story is repeated. The log entry gets again multiplexed in the server-ISP feed. At the ISP the log entry is demultiplexed and appended to the server-client feed. From there it is replicated to the client and the client got its result for the request.
+
+\textit{Schema von log entry in log entry}
+
+
 \section{Outlook}
-\subsection{P2P ISP Nodes}
-\subsection{Contract between ISPs}
+Having all these concepts and architecture, we see the whole process is simplified on a single central ISP. In the real world this is not the case, hence as prove of concept it is more than enough. In the next steps the system has to be expanded by splitting this very ISP into a net of ICPs. They act as as effective connectivity stations and an architecture has to be found where clients and servers connect to these conectivity nodes. Also adding more ISPs, more companies is needed. The dynamic of contracts between ISPs has to be explored, but more in the Future Work section.
