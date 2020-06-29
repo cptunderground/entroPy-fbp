@@ -1,16 +1,31 @@
 \chapter{Implementation}
+In this chapter will be discussed, how a prototype implementation could be realised by applying the above outlined concepts and architectures. This implementation or better said pseudo code shall give a high level overview what can be derived from the concept into the software, by discussing the key elements.
 \section{Contracts}
+Implementing the contracts is a rather easy task on a prototype implementation than it would be for a real world application. As mentioned it consists of the knowledge about each other and where they are located. 
+\\\\
 \begin{tabular}{llll} \toprule
     Client-Contract&value&ISP-contract&value\\ \midrule
     actual public key:& cli001 &  actual public key: &isp001  \\ 
     actual private key:& ****** & actual private key:& ****** \\
-    actual feed ID:& cli001\_isp001 &actual feed ID:&isp001\_cli001 \\ 
+    Client-ISP feed ID:& cli001\_isp001 &ISP-Client feed ID:&isp001\_cli001 \\ 
     ISP public key&isp001&Client public key:&cli001\\
-    ISP feed ID&isp001\_cli001&Client feed ID:&cli001\_isp001\\
+    ISP-Client feed ID&isp001\_cli001&Client-ISP feed ID:&cli001\_isp001\\
     ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
 \end{tabular}
+\\
+\\
+In this table we can see a basic contract with all the information needed. This contract can still be broken down even more, since the feed-IDs are just appended public keys. Here a first abstraction to the real world application is made, the public and private keys would be curve 25559\footnote{Quelle} key pairs. The terms here act as simplification and easier distinguishable keys. Having this setup with a curve 25559 key pair it is best practice to store them in a secrets or key file. So the most basic contract can look like this:
+\\\\
+\begin{tabular}{llll} \toprule
+    Client-Contract&value&ISP-contract&value\\ \midrule
+    key file:& cli001.key &  key file: &isp001.key  \\ 
+    ISP public key&isp001&Client public key:&cli001\\
+    ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
+\end{tabular}
+\\\\
+This even more simplified base can be stored in some file and build the rest of the contract by the programm, but there needs to store it somehow.
 \subsection{ISP-Server Contract}
-Since your best friend has an other friend the contract is the same as in the Client-ISP Contract.\\\\
+\textit{remove}\\\\
 \begin{tabular}{llllll} \toprule
     ISP-contract&value&Server-Contract&value\\ \midrule
     actual public key:& isp001 &  actual public key: &ser001   \\ 
@@ -19,23 +34,41 @@ Since your best friend has an other friend the contract is the same as in the Cl
     Server public key:&ser001&ISP public key:&isp001\\
     Server feed ID:&ser001\_isp001&ISP feed ID:&isp001\_ser001\\\bottomrule
 \end{tabular}
-\section{Feeds}
-Given by Prof. Tschudin explain structure
+\section{Replicated Feeds}
+This implementation was given by Prof. Dr. Tschudin. It is a very simplified version of an append-only log in the pcap format, generated from a curve 25559 key pair. Every log entry is signed by some private key, which leads to integrity but not security. The whole security part was left out during this thesis.
+\subsection{Structure}
+The Feed is a list of log entries. Each log entry consists of three main parts: meta data, the signature and the content. The meta holds information about the current log entry such as the feed ID, its sequence number, which is the internal possition in the feed of the log entry, a hash reference to the log entry before, its own hash value of the content for the next log entry. Next is the signature which signs the meta data. The content part is what is actually put into the log entry.\\
+Since all the information is stored in the cbor2 format and the saved in a pcap file, the result is a binary array which hold important properties usful for the bundling. Either a new log entry can be written with a key or an existing log entry can be appended to the binary array without validation. This mechanism is a key feature for the bundling aspect.
+\textit{BILD}
+\subsection{Replication}
+The replication mechanism gets invoked after each write operation to a feed. Generally speaking, this could be realised easily with TCP or UDP in a real network. In this basic implementation replicates feeds in the filesystem this was solved by just copy the feed to the corresponding folder given in the contract.
 \section{RPC}
-API with all methods in context of feeds and peers
-Adapted from RPyC so in the service class all services can be defined and have no impact on
+Having the contract and replicated feeds, the type of RPC-protocol plays its turn. To communicate between two participants four general methodes are needed as listed below. By having a simple serialisable datastructure requests and results are generated. Requests call services which use the given attributes and produce a result, this connects to the given idea of the real RPC-protocol\footnote{Birrel}
+\section{Datastructure}
+A suiting datastructure or format is a dictionary or a JSON-String, having keys that reference a field, as well as beeing serialisable. In this structure an ID has to be given to identify the request or result, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
+\{'ID':0, 'type':'request', 'service':'echo', 'attributes':['An echo']\}\\
+\{'ID':0, 'type':'result', 'result':'An echo'\}
+Having the ID as identifier, caller can look up the request made and map the result to the call.
+\section{Services}
+Services are the procedures called by the caller and executed by the callee. In the feed bundle protocol there are some key services which have to be implmented:
+\begin{itemize}
+    \item echo - It just returns the given attributes.
+    \item get\_service\_catalog - the caller needs a list of all services the caller has available.
+    \item introduce - This service passes a request to the server specified in the attributes and introduces the caller(client) to it and sign a contract.
+    \item detruce - This closes an alread established contract and ereases all information built on it.
+    \item get\_servers - To call the introduce service a server is needed. Since the caller has no knowledge about servers, this is essential.
+\end{itemize}
 \subsection{Send Request}
-Format of request and api of method
+\textit{pseudo method}
 \subsection{Read Request}
-Format of request and api of method
+\textit{pseudo method}
 \subsection{Send Result}
-Format of request and api of method
+\textit{pseudo method}
 \subsection{Read Result}
-Format of request and api of method
+\textit{pseudo method}
 \section{Introducing}
 how is it implemented
-\section{Replication}
-Replicator Class that is given to each 'feed' so every time on this feed is operated by wr replicate to predefined location
+
 \section{Multiplexing}
 mux package idea is to only pass through the request then write in 'replication' feed and work from there.
 also for answering channel

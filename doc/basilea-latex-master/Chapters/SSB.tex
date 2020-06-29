@@ -16,8 +16,8 @@ append-only log makes the jump into the the universe of Secure Scuttlebutt much 
 Secure Scuttlebutt (SSB) is a novel peer-to-peer event-sharing protocol and architecture for
 social apps.\\footnote{Tschudin Paper} Aim of this section is to give a very high level overview about SSB, its ideas
 and properties, since the they are not quiet easy to understand.
-\subsection{Append Only Log}
-\subsection{Feed Distribution}
+\subsection{Append-Only Log}
+
 \subsection{Onboarding}
 \section{Remote Procedure Call}
 Remote procedure calls, as the name implicates, are based on procedure calls but extended
@@ -29,6 +29,6 @@ environement is supended, all the information needed for the call transmitted th
 network and received by the callee, where the actual procedure is executed with these exact
 parameters. The benefit of such an RPC-protocol is that the interfaces are designed in a
 way, that third parties only write the procedures and call exactly these procedures in the
-callers environement.\citet[]{birrell1984implementing} This leads to a very promissing way to have a basic version of such
+callers environement.\citet{birrell1984implementing} This leads to a very promissing way to have a basic version of such
 an RPC-protocol for this thesis. Since it allows to invoke in the callers environement but
-are atually performend by a callee which returns the result back to the caller.\citet[]{birrell1984implementing}
+are atually performend by a callee which returns the result back to the caller.\citet{birrell1984implementing}
