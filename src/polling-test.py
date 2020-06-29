@@ -362,8 +362,7 @@ if __name__ == '__main__':
     print("---------------------")
     pcap.dump("./feeds/ser001/ser001_isp001.pcap")
     print("---------------------")
-    pcap.dump("./feeds/fff111/isp001_fff111.pcap")
-    print("---------------------")
-    pcap.dump("./feeds/fff111/fff111_isp001.pcap")
+    pcap.dump("./feeds/cli001/cli001_ser001.pcap")
     print("---------------------")
     pcap.dump("./feeds/isp001/isp001_ser001.pcap")
+

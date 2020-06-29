@@ -412,7 +412,11 @@ def handle_introduction():
     p.open('r')
     for w in p:
         # here we apply our knowledge about the event/pkt's internal struct
-        e = cbor2.loads(w)
+        try:
+            e = cbor2.loads(w)
+        except:
+            logging.warning('A log entry could not be read due to failure of CBOR')
+            continue
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
         # rewrite the packet's byte arrays for pretty printing:

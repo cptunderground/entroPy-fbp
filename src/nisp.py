@@ -871,7 +871,11 @@ def handle_approved_introduce(server: Server):
     p.open('r')
     for w in p:
 
-        e = cbor2.loads(w)
+        try:
+            e = cbor2.loads(w)
+        except:
+            logging.critical('cbor2 loader failed')
+            continue
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
 
@@ -1108,7 +1112,11 @@ def handle_new_requests(client: Client):
     p.open('r')
     for w in p:
 
-        e = cbor2.loads(w)
+        try:
+            e = cbor2.loads(w)
+        except:
+            logging.critical('cbor2 loader failed - skipping logentry')
+            continue
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
 

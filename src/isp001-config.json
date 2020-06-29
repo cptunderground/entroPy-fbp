@@ -1,7 +1,7 @@
 {   
     "ipk":"isp001",
     "location": "./feeds/isp001",
-    "client_keys": ["cli001","cli002"],
+    "client_keys": ["cli001","cli002","cli003","cli004","cli005"],
     "server_keys": ["ser001","ser002"],
 
     "cli001":
@@ -16,6 +16,25 @@
         "cpk": "cli002",
         "c_location":"./feeds/cli002"
     },
+    "cli003":
+    {
+        "role": "client",
+        "cpk": "cli003",
+        "c_location":"./feeds/cli003"
+    },
+    "cli004":
+    {
+        "role": "client",
+        "cpk": "cli004",
+        "c_location":"./feeds/cli004"
+    },
+    "cli005":
+    {
+        "role": "client",
+        "cpk": "cli005",
+        "c_location":"./feeds/cli005"
+    },
+
 
     "ser001":
     {

@@ -493,7 +493,11 @@ def read_c_result(ID, server: cServer):
     p.open('r')
     for w in p:
         # here we apply our knowledge about the event/pkt's internal struct
-        e = cbor2.loads(w)
+        try:
+            e = cbor2.loads(w)
+        except:
+            logging.critical('cbor2 loader failed - skipping logentry')
+            continue
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
         # rewrite the packet's byte arrays for pretty printing:
@@ -526,7 +530,11 @@ def read_result(ID):
     p.open('r')
     for w in p:
         # here we apply our knowledge about the event/pkt's internal struct
-        e = cbor2.loads(w)
+        try:
+            e = cbor2.loads(w)
+        except:
+            logging.critical('cbor2 loader failed - skipping logentry')
+            continue
         href = hashlib.sha256(e[0]).digest()
         e[0] = cbor2.loads(e[0])
         # rewrite the packet's byte arrays for pretty printing:
@@ -752,7 +760,7 @@ if __name__ == '__main__':
     def testing():
         logging.info('STARTING TESTING')
         delay = round(random.uniform(1.0,4.0),1)
-        iterations = random.randint(5,20)
+        iterations = 300 #random.randint(5,20)
         time.sleep(delay)
 
         input = '--introduce -isp001 [\'ser001\']'
@@ -777,7 +785,7 @@ if __name__ == '__main__':
 
         for i in range(iterations):
 
-            delay = round(random.uniform(1.0, 4.0), 1)
+            delay = 0.1 #round(random.uniform(1.0, 2.0), 1)
             input = '--echo -ser001 [\'testecho\']'
             logging.info(f'Input:{input}, delay:{delay}')
             request = handle_input(input)
@@ -787,6 +795,39 @@ if __name__ == '__main__':
             else:
                 print('')
             time.sleep(delay)
+            input = 'refresh'
+            logging.info(f'Input:{input}, delay:{delay}')
+            request = handle_input(input)
+            if request != None:
+                read_request()
+                send_request(request)
+            else:
+                print('')
+            time.sleep(delay)
+
+            delay = 0.1  # round(random.uniform(1.0, 2.0), 1)
+            input = '--echo -isp001 [\'testecho\']'
+            logging.info(f'Input:{input}, delay:{delay}')
+            request = handle_input(input)
+            if request != None:
+                read_request()
+                send_request(request)
+            else:
+                print('')
+            time.sleep(delay)
+            input = 'refresh'
+            logging.info(f'Input:{input}, delay:{delay}')
+            request = handle_input(input)
+            if request != None:
+                read_request()
+                send_request(request)
+            else:
+                print('')
+            time.sleep(delay)
+
+        logging.info(f'Open Requests:{result_ID_list}')
+        logging.warning('System terminates')
+        exit(1)
 
         delay = round(random.uniform(1.0, 4.0), 1)
         input = '--detruce -isp001 [\'ser001\']'
@@ -809,7 +850,8 @@ if __name__ == '__main__':
             print('')
         time.sleep(delay)
 
-    start_watchdog(testing)
+
+    start_watchdog(r)
 
     logging.info('dumping feed...')
     pcap.dump(client_log)
