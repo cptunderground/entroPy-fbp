@@ -432,7 +432,7 @@ def handle_introduction():
                 # create both feeds and return information from both feeds for client
                 # wait for input of server, either accept or decline
                 print('accept/decline new client:')
-                answer = input()
+                answer = 'accept' #input()
                 if answer == 'accept':
                     result = create_e2e_feed(attributes)
                     send_result(e[2], result)

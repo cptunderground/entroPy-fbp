@@ -718,24 +718,27 @@ def read_request(log_entry: dict, client: Client):
 
 
 def delete_E2E_feed(pk):
-    print(sub_client_dict)
-    sub_client = sub_client_dict[pk]
-
+    print(f'subclientdict:{sub_client_dict}')
     try:
-        os.remove(sub_client.client_isp_feed)
+        sub_client = sub_client_dict[pk]
+        try:
+            os.remove(sub_client.client_isp_feed)
+        except:
+            logging.warning(f'could not delete file {sub_client.client_isp_feed}')
+        try:
+            os.remove(sub_client.isp_client_key)
+        except:
+            logging.warning(f'could not delete file {sub_client.isp_client_key}')
+        try:
+            os.remove(sub_client.isp_client_feed)
+        except:
+            logging.warning(f'could not delete file {sub_client.isp_client_feed}')
     except:
-        logging.warning(f'could not delete file {sub_client.client_isp_feed}')
+        pass
     try:
-        os.remove(sub_client.isp_client_key)
+        sub_client_dict.pop(pk)
     except:
-        logging.warning(f'could not delete file {sub_client.isp_client_key}')
-    try:
-        os.remove(sub_client.isp_client_feed)
-    except:
-        logging.warning(f'could not delete file {sub_client.isp_client_feed}')
-
-    sub_client_dict.pop(pk)
-
+        pass
 
 def create_E2E_feed(server: Server, client: Client):
     cpk = client.name
@@ -931,7 +934,7 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-
+            client.highest_request_ID=e[2]['request_ID']
             if client.open_requests.__contains__(e[2]['request_ID']):
                 client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()

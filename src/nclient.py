@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import multiprocessing
+import random
 import re
 import argparse
 import os
@@ -748,8 +749,67 @@ if __name__ == '__main__':
         else:
             print('')
 
+    def testing():
+        logging.info('STARTING TESTING')
+        delay = round(random.uniform(1.0,4.0),1)
+        iterations = random.randint(5,20)
+        time.sleep(delay)
 
-    start_watchdog(r)
+        input = '--introduce -isp001 [\'ser001\']'
+        logging.info(f'Input:{input}, delay:{delay}')
+        request = handle_input(input)
+        if request != None:
+            read_request()
+            send_request(request)
+        else:
+            print('')
+        time.sleep(delay)
+
+        input = 'refresh'
+        logging.info(f'Input:{input}, delay:{delay}')
+        request = handle_input(input)
+        if request != None:
+            read_request()
+            send_request(request)
+        else:
+            print('')
+        time.sleep(delay)
+
+        for i in range(iterations):
+
+            delay = round(random.uniform(1.0, 4.0), 1)
+            input = '--echo -ser001 [\'testecho\']'
+            logging.info(f'Input:{input}, delay:{delay}')
+            request = handle_input(input)
+            if request != None:
+                read_request()
+                send_request(request)
+            else:
+                print('')
+            time.sleep(delay)
+
+        delay = round(random.uniform(1.0, 4.0), 1)
+        input = '--detruce -isp001 [\'ser001\']'
+        logging.info(f'Input:{input}, delay:{delay}')
+        request = handle_input(input)
+        if request != None:
+            read_request()
+            send_request(request)
+        else:
+            print('')
+        time.sleep(delay)
+
+        input = 'refresh'
+        logging.info(f'Input:{input}, delay:{delay}')
+        request = handle_input(input)
+        if request != None:
+            read_request()
+            send_request(request)
+        else:
+            print('')
+        time.sleep(delay)
+
+    start_watchdog(testing)
 
     logging.info('dumping feed...')
     pcap.dump(client_log)
