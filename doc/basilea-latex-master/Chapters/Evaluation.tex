@@ -1,4 +1,10 @@
 \chapter{Evaluation}
+Evaluating a system, which takes baby steps into a completely new environement, was quiet challenging. Since most of the work was to come up with the concepts and architecture, the implementation is a little bit chaotic and often not exactly as the given concepts. Nevertheless, the code has been tested and important conclusions were drawn.
+\section{Testing Environment}
+As seen in the implementation part, the client can call services via requests from the ISP as well as from the server after introducing itself to it. Given this, the main testing aspect was to see that ISP and servers can keep up with the work load and distribute the results back to its origin. The test was as followed:\\
+First there were three nodes involved, one client, one ISP and one server. After initialising all nodes the client went into a loop, where it first introduced itself to the server. The server automatically accepted this request and the feed-pair was created. After this, a random number was created between 5 and 20, which were the amount of service requests sent to this now connected server. To mimic a human interaction at first delays between the 
+
 \subsection{Indexing - Keep Track of Progress}
 using sequenze numbers for keeping track and ID in entries is only 
-\subsection{Stability - Robustness}
+
+\subsection{Zusammenarbeit der componenten}
