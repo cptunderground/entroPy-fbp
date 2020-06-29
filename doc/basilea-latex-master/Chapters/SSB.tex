@@ -1,11 +1,34 @@
 \chapter{Related Work}
-More detailed overview about SSB.
-Feed distribution problem
-General onboarding problem
-Paralellism between pubs and ISPs.
+In this chapter we will see some of the key features which were taken account of to realise the
+feed bundle protocol. Befor taking a closer at the baseline for the protocol, which consists of
+parts from the Secure Scuttlebutt technologie and the Remote Procedure Call Protocol, we
+jump shortly into the blockchain and its properties, since by this very moment, everybody
+who reads this thesis will heard about.
+\section{Blockchain}
+The blockchain is well known as the foundation of the bitcoin. It has received an extensive
+attention in the recent years.\\footnote{Quelle Zheng Xie etc} 5 But what is the thing that makes the blockchain so impressiv
+and desired? The blockchain is often described as an immutable ledger which allows trans-
+actions to take place in a decentralised manner.\\footnote{Quelle Zheng Xie etc} 6 Exactly these key properties we also find
+in Secure Scuttlebutt.
 \section{Secure Scuttlebutt}
+Having the blockchain as a foundation and rather well know by the broad mass for an
+append-only log makes the jump into the the universe of Secure Scuttlebutt much easier.
+Secure Scuttlebutt (SSB) is a novel peer-to-peer event-sharing protocol and architecture for
+social apps.\\footnote{Tschudin Paper} Aim of this section is to give a very high level overview about SSB, its ideas
+and properties, since the they are not quiet easy to understand.
 \subsection{Append Only Log}
 \subsection{Feed Distribution}
 \subsection{Onboarding}
-\section{Blockchain}
 \section{Remote Procedure Call}
+Remote procedure calls, as the name implicates, are based on procedure calls but extended
+to provide for transfer of control and data across a communication network. There are
+two participants in the simplest manner, caller and callee. The caller wants to invoke a
+procedure with given parameters. The callee is the instance, which actually proceeds with
+the data and returns the result of that specific request. If an RPC is invoked, the the caller’s
+environement is supended, all the information needed for the call transmitted through the
+network and received by the callee, where the actual procedure is executed with these exact
+parameters. The benefit of such an RPC-protocol is that the interfaces are designed in a
+way, that third parties only write the procedures and call exactly these procedures in the
+callers environement.\citet[]{birrell1984implementing} This leads to a very promissing way to have a basic version of such
+an RPC-protocol for this thesis. Since it allows to invoke in the callers environement but
+are atually performend by a callee which returns the result back to the caller.\citet[]{birrell1984implementing}
