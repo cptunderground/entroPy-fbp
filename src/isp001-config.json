@@ -1,7 +1,7 @@
 {   
     "ipk":"isp001",
     "location": "./feeds/isp001",
-    "client_keys": ["cli001"],
+    "client_keys": ["cli001","cli002"],
     "server_keys": ["ser001","ser002"],
 
     "cli001":
@@ -10,11 +10,11 @@
         "cpk": "cli001",
         "c_location":"./feeds/cli001"
     },
-    "fff111":
+    "cli002":
     {
         "role": "client",
-        "cpk": "fff111",
-        "c_location":"./feeds/fff111"
+        "cpk": "cli002",
+        "c_location":"./feeds/cli002"
     },
 
     "ser001":
