@@ -325,8 +325,6 @@ INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/./Chapt
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/./Chapters/Concepts_and_Architecture.tex
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/adobe/helvetic/phvr7t.vf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/adobe/helvetic/phvr8r.tfm
-INPUT /usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
-INPUT /usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/feed_schema.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/feed_schema.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/feed_schema.png
@@ -341,6 +339,8 @@ INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/mux_schema.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/./Chapters/Implementation.tex
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/./Chapters/Implementation.tex
+INPUT /usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
+INPUT /usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
 INPUT ./Chapters/Evaluation.tex
 INPUT ./Chapters/Evaluation.tex
 INPUT ./Chapters/Conclusion_and_Future_Work.tex
