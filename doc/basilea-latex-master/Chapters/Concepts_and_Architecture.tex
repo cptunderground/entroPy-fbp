@@ -12,6 +12,14 @@ After a while it gets boring only talking to this one friend. Luckily, your frie
 After your friend has introduced you to one of his other friends and this other friend descides to be friends with you, you and your new friend start to build a new tin can phone, with the You-Other and Other-You tins. But because you are too far away from each other, you cannot just have a cord from one to the other, so your best friend allows you to route the cord through his house. This corresponds to the replication of the feeds over an intermediary connectivity provider.\\
 
 But there is another problem: you are not the only one. After a while, your best friend has so many connections running through his house from all his friends who want to talk to their other friends, that here is an enormous number of strings going to that other friend. Your friend descides to combine all these strings into one and send all messages through this one, single bundled connection with the information into which tin can it comes at the end. He multiplexes. Given that little story, we can derive concepts and architecture for the tin can phones of the future. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{tincan}
+    \caption{Tin can analogy illustrated.}
+    \label{fig:tincan}
+\end{figure}
+
 \section{Contracts}
 Given that little story, we see the foundation of the friendship. The friendship between you and your best friend and the friendship between your best friend and his other friend. By the same token, it is the business contracts between the nodes that provide the foundation for the entire connectivity, protocol and bundling. These contracts are to most important building block of the whole thesis since the define the behaviour of the replicated feed pairs,  onboarding mechanics and bundling.
 
@@ -22,8 +30,9 @@ Since everybody in your house can use the tin phone, you also need some sort of 
 
 The address, as the name is well chosen, refers to the IP-address. Last but not least, to distinguish all the cans, you label them accordingly. \\
 
-Therefore a contract consists of actual public key, actual private key, actual feed ID and the peers public key, feed ID and location. Since a contract has been established, we need to know what happens in the tin cans and the wire. This leads to the replicated feeds.
-\textit{Picture of identities with contract}
+Therefore a contract consists of actual public key, actual private key, actual feed ID and the peers public key, feed ID and location. Since a contract has been established, we need to know what happens in the tin cans and the wire. This leads to the replicated feeds.\\
+
+\textit{Eventually Picture of identities with contract}
 
 \section{Replicated Feeds}
 The following sentences can be exctracted from the Scuttlebutt Protocol Guide: ”A feed is a signed append-only sequence of messages. Each identity has exactly one feed."\footnote{\url{https://scuttlebot.io/more/protocols/secure-scuttlebutt.html}} and "Messages from feeds 3 hops out are replicated to help keep them available for others."\footnote{\url{https://scuttlebot.io/more/protocols/secure-scuttlebutt.html}} - So what do these properties mean?\\
@@ -35,7 +44,7 @@ There is a lot more going on in the SSB feed and protocol, but an adapted simpli
 \begin{figure}
     \centering
     \includegraphics[width=0.5\textwidth]{feed_schema}
-    \caption{A schematic simplified feed. The meta data ensures the append only property, whereas the signature realises signing. Content is the actual data which is stored in the feed.}
+    \caption{A schematic simplified feed with the fields meta, signature and content.}
     \label{fig:feed_schema}
 \end{figure}
 
@@ -46,7 +55,7 @@ These properties underline the trust by guaranteeing completeness and validity o
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{fbp_v0_1_Schema}
-    \caption{Full contract between client and ISP with feeds as it is the same for the server and the ISP as shown.}
+    \caption{Feed-pair between client and ISP.}
     \label{fig:contract_cli_isp}
 \end{figure}
 The replicator or the replication process has it first appearance. As a concept, there is some sort of replicator instance or procedure that replicates the feeds to the corresponding address or location. But let’s have a closer look at the implementation part. \\
@@ -105,8 +114,12 @@ The introducing and detrucing idea remains the same, whereas the replication pro
 \subsection{Multiplexing and Demultiplexing}
 As far as the communication between a client and a server is concerend, requests from the client are transferred the same way as before to the ISP. Instead of just forwarding the updated feed, by replicating to the server, the ISP detects new log entries and multiplexes these into a new log entry.
 More specifically, the ISP generates a log entry signed by itself, where the content of it is the whole log entry signed by the client. This log entry is written to the ISP-Server feed and replicated. The server detects the change on the ISP-Server feed and takes this log entry. The multiplexed log entry, which belongs into a client-server feed is extracted and appended to the Client-Server feed. This step is called demultiplexing. At this point the situation is the same as before. A change in the Client-Server feed is given and the request is executed. The result is written to the Server-Client feed and not replicated again over the ISP to the client directly. From there the whole story is repeated. The log entry is  multiplexed in the Server-ISP feed again, when it arrives at the ISP it is demultiplexed and appended to the Server-Client feed. From there it is replicated to the client and the client receives its result for the request.
-
-\textit{Schema von log entry in log entry}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{loginlog}
+    \caption{A log entry inside another log entry.}
+    \label{fig:loginlog}
+\end{figure}
 
 
 \section{Outlook}

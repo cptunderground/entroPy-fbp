@@ -2,40 +2,30 @@
 In this chapter will be discussed, how a prototype implementation could be realised by applying the above outlined concepts and architectures. This implementation or better said pseudo code shall give a high level overview what can be derived from the concept into the software, by discussing the key elements. All these descriptions are so far known 'best practice', but do not tackle all software-architectural concerns of the FBP as long as the concept and consense is not violated.
 \section{Contracts}
 Implementing the contracts is a rather easy task on a prototype implementation than it would be for a real world application. As mentioned it consists of the knowledge about each other and where they are located. 
-\\\\
-\begin{tabular}{llll} \toprule
-    Client-Contract&value&ISP-contract&value\\ \midrule
-    actual public key:& cli001 &  actual public key: &isp001  \\ 
-    actual private key:& ****** & actual private key:& ****** \\
-    Client-ISP feed ID:& cli001\_isp001 &ISP-Client feed ID:&isp001\_cli001 \\ 
-    ISP public key&isp001&Client public key:&cli001\\
-    ISP-Client feed ID&isp001\_cli001&Client-ISP feed ID:&cli001\_isp001\\
-    ISP location:&131.152.158.21:5000 &Client location:& 131.152.211.12:5000 \\\bottomrule
-\end{tabular}
-\\
-\\
-In this table we can see a basic contract with all the information needed. This contract can still be broken down even more, since the feed-IDs are just appended public keys. Here a first abstraction to the real world application is made, the public and private keys would most likely be some 256-bits long integer key pairs for example Curve25519\footnote{Quelle}. This would result in a 64 digit long hexadecimal representation. The terms here act as simplification and easier distinguishable keys. Having this setup with a for exapmle Curve25519 key pair it is best practice to store them in a secrets or key file. So the most basic contract can look like this:
-\\\\
-\begin{tabular}{llll} \toprule
-    Client-Contract&value&ISP-contract&value\\ \midrule
-    key file:& cli001.key &  key file: &isp001.key  \\ 
-    ISP public key&isp001&Client public key:&cli001\\
-    ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
-\end{tabular}
-\\\\
-This even more simplified base, which runs on a localhost over the filesystem, can be stored in some file and build the rest of the contract by the programm. Then these contracts need to be stored somewhere in the software, but can be freely chosen.
-\subsection{ISP-Server Contract}
-\textit{remove}\\\\
+\begin{center}
+    \begin{tabular}{llll} \toprule
+        Client-Contract&value&ISP-contract&value\\ \midrule
+        actual public key:& cli001 &  actual public key: &isp001  \\ 
+        actual private key:& ****** & actual private key:& ****** \\
+        Client-ISP feed ID:& cli001\_isp001 &ISP-Client feed ID:&isp001\_cli001 \\ 
+        ISP public key&isp001&Client public key:&cli001\\
+        ISP-Client feed ID&isp001\_cli001&Client-ISP feed ID:&cli001\_isp001\\
+        ISP location:&131.152.158.21:5000 &Client location:& 131.152.211.12:5000 \\\bottomrule
+    \end{tabular}
+\end{center}
 
-\begin{tabular}{llll} \toprule
-    Contract between Client and ISP&&&\\\midrule
-    ISP-contract&value&Server-Contract&value\\ \midrule
-    actual public key:& isp001 &  actual public key: &ser001   \\ 
-    actual private key:& ****** & actual private key:& ******  \\
-    actual feed ID:& isp001\_ser001 &actual feed ID:&ser001\_isp001\\ 
-    Server public key:&ser001&ISP public key:&isp001\\
-    Server feed ID:&ser001\_isp001&ISP feed ID:&isp001\_ser001\\\bottomrule
-\end{tabular}
+In this table we can see a basic contract with all the information needed. This contract can still be broken down even more, since the feed-IDs are just appended public keys. Here a first abstraction to the real world application is made, the public and private keys would most likely be some 256-bits long integer key pairs for example Curve25519\footnote{Quelle}. This would result in a 64 digit long hexadecimal representation. The terms here act as simplification and easier distinguishable keys. Having this setup with a for exapmle Curve25519 key pair it is best practice to store them in a secrets or key file. So the most basic contract can look like this:
+
+\begin{center}  
+    \begin{tabular}{llll} \toprule
+        Client-Contract&value&ISP-contract&value\\ \midrule
+        key file:& cli001.key &  key file: &isp001.key  \\ 
+        ISP public key&isp001&Client public key:&cli001\\
+        ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
+    \end{tabular}  
+\end{center}
+This even more simplified base, which runs on a localhost over the filesystem, can be stored in some file and build the rest of the contract by the programm. Then these contracts need to be stored somewhere in the software, but can be freely chosen.
+
 \section{Replicated Feeds}
 This implementation was developped by Prof. Dr. Christian Tschudin. It is a very simplified version of an append-only log in the .pcap format, generated from a Curve25519 key pair. Every log entry is signed by some private key, which leads to integrity but not security. The whole security part was left out during this thesis.
 \subsection{Structure}
@@ -48,8 +38,14 @@ The replication mechanism gets invoked after each write operation to a feed. Gen
 Having the contract and replicated feeds, the type of RPC-protocol plays its turn. To communicate between two participants four general methodes are needed as listed below. By having a simple serialisable datastructure for requests and results, they can be easily encorperated in the feeds. Requests call services which use the given attributes and produce a result, this connects to the given idea of the original RPC-protocol by \citet{birrell1984implementing}.
 \section{Datastructure}
 A suiting datastructure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure an ID has to be given to distinguish repeted reqests as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
-\{'ID':0, 'type':'request', 'service':'echo', 'attributes':['An echo']\}\\
-\{'ID':0, 'type':'result', 'result':'An echo'\}\\
+
+\begin{lstlisting}
+request = {'ID':0, 'type':'request', 'service':'echo', 
+           'attributes':['An echo']}
+result = {'ID':0, 'type':'result', 'result':'An echo'}
+\end{lstlisting}
+
+
 Having the ID as identifier, caller can look up the request made and map the result to the call.
 \section{Services}
 Services are the procedures called by the caller and executed by the callee. In the feed bundle protocol there are some key services which have to be considered:
@@ -63,16 +59,17 @@ Services are the procedures called by the caller and executed by the callee. In 
 \section{API}
 As disclaimer, these API methods correspond only to the logical aspect of the pseudo code. There are many ways to implement them in differing software-architecturial styles, the implementation only shows what is minimally needed and executed.
 \subsection{Send Request}
-\textit{pseudo method}\\
+\lstinputlisting[]{Code/send_request.py}
+
 The send\_request method needs to have knowledge about the to invoke service and the attributes for that, as well as a destination. Since already described it is not e sending in the old-fashined way, the destination correspons to the Caller-Callee feed where the caller is the source and the Callee is the destination. Given these parameters, a request can be formed and written to the destination feed, whereas the feed has to be replicated afterwards. 
 \subsection{Read Request}
-\textit{pseudo method}\\
+\lstinputlisting[]{Code/read_request.py}
 This method needs to follow on a feed change. This can be realised either by a global polling mechanism which invokes the read\_request method or directly in the method by listening to a feed. It takes the request, extracts its contents and invokes the specified service and waits for its result. Afterwards either returns the result or passes it directly to send\_result method.
 \subsection{Send Result}
-\textit{pseudo method}\\
+\lstinputlisting[]{Code/send_result.py}
 This method is very similar to the send\_request method. It takes old executed request to have information about the ID, formes the result and writes it to the Callee-Caller feed.
 \subsection{Read Result}
-\textit{pseudo method}\\
+\lstinputlisting[]{Code/read_result.py}
 Again this method needs also to follow on a feed change, takes the result and closes the request. Since the send\_request method quiet some time elapsed, so there is a threading issue. Will the send\_request method be blocking or not? This depends on overlay of FBP and cannot be decided in general although it is blocking in the implementation of \citet{birrell1984implementing}. Therefore it needs to be remarked but not considered at this API level.
 
 \section{Bundling}
@@ -80,24 +77,57 @@ Leading to the bundling key element, the other components were laied out and spe
 \subsection{Introducing and Detrucing}
 As seen in the RPC implementation, a client calls the introduce-service with the server it wants to be introduced to. At this point the ISP holds a request from the client. The ISP does an RPC-request by itself to the server as followed:
 \\
-Client request: \{'ID':0, 'type':'request', 'service':'introduce', 'attributes':'ser001'\}\\
-ISP request: \{'ID':0, 'client\_request\_ID':0, 'type':'request', 'service':'introduce', 'attributes':{'public\_key':'cli001'}\}\\
+Client request: \begin{lstlisting}
+client_request = {'ID':0, 'type':'request', 'service':'introduce', 
+                  'attributes':'ser001'}
+\end{lstlisting}
+ISP request: 
+\begin{lstlisting}
+isp_request = {'ID':0, 'client_request_ID':0, 'type':'request', 
+               'service':'introduce', 'attributes':{'public_key':'cli001'}}
+\end{lstlisting}
+
 
 In this request, everything is given the server needs to know. After creating the entire feed-pair and setting up the contract, the result is returned to the ISP.
 \\
-\{'ID':0, 'client\_request\_ID':0, 'type':'result', 'result':\\\{'public\_key':'ser001', 'client\_server\_feed\_ID':'cli001\_ser001', 'server\_client\_feed\_ID':'ser001\_cli001'\}\\\}\\
+\begin{lstlisting}
+isp_result = {'ID':0, 'client_request_ID':0, 'type':'result', 
+              'result':{'public_key':'ser001', 
+                        'client_server_feed_ID':'cli001_ser001',
+                        'server_client_feed_ID':'ser001_cli001'
+                        }
+             }
+\end{lstlisting}
 With these informations, the ISP can build the Server-Client feed and replicate it, since the location of the client is already known.
 Afterwards the client gets its result on the initial introduce-request an can build the Client-Server feed and also replicate this to the ISP.\\
-\{'ID':0, 'type':'result', 'result':\\\{'public\_key':'ser001', 'client\_server\_feed\_ID':'cli001\_ser001', 'server\_client\_feed\_ID':'ser001\_cli001'\}\\\}\\
+\begin{lstlisting}
+client_result = {'ID':0, 'type':'result', 
+                 'result':{'public_key':'ser001', 
+                           'client_server_feed_ID':'cli001_ser001', 
+                           'server_client_feed_ID':'ser001_cli001'
+                          }
+                 }
+\end{lstlisting}
 This implementation corresponds to a client, ISP and server, which do not know how each other names the feeds, as well as over which public key the connection will be handled, this lays the base for several ISP nodes dicussed in the future work. 
 
 \subsection{Multiplexing}
 Having now an introduced client we need to have a look at the communication between it and the server. As already mentioned, there is no direct feed replication between the client and the server over the ISP. Instead the requests are taken from the Client-Server feed at the ISP put in the ISP-Server feed and then again taken from this same feed in the representation of the Client-Server feed at the server.\\
 For this a new type is accepted, as well as a new field is added in the RPC-datastructure: the mux-type and the meta-field. Here an abstraction of the structure of a 'mux-request':\\
-\{'ID':1, 'type':'mux', 'meta':\\\{'feed\_ID':'cli001\_ser001'\},'request':\\\{'ID':1, 'type':'request', 'service':'echo', 'attributes':'hello server'\}\\\}\\
+\begin{lstlisting}
+mux_request = {'ID':1, 'type':'mux', 
+               'meta':{'feed\_ID':'cli001_ser001'},
+               'request':{'ID':1, 'type':'request', 'service':'echo', 
+                          'attributes':'hello server'}
+              }
+\end{lstlisting}
 The mux type ensures that the log entry is not designd for the read\_result method of the RPC and in the meta field, all information additionally needed by the server are given. A server reading this, knows in which feed the request belongs writes it into this feed and from there performs the requested service. The result is as followed written in the Server-ISP feed:\\
-\{'ID':1, 'type':'mux', 'meta':\\\{'feed\_ID':'ser001\_cli001'\},'result':\\\{'ID':1, 'type':'result', 'result':'hello server'\}\\\}\\
-Again the meta data describes how to handle this specific mux-result in the ISP.\\
+\begin{lstlisting}
+mux_result = {'ID':1, 'type':'mux', 
+              'meta':{'feed_ID':'ser001_cli001'},
+              'result':{'ID':1, 'type':'result', 'result':'hello server'}
+             }
+\end{lstlisting}
+Again the meta data describes how to handle this specific mux-result in the ISP.
 If we approach the problem like this, one particular inconsitency occurs. When writing in feeds with this approach the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request to and then rewrite it, the whole log entry is put as the value of the key request or result and at demultiplexing state bytewise appended to the corresponding feed.
 \textit{Picture}
 Clearly seen is the full log entry $w$ of the Client-Server feed. By putting $w$ directly in the log entry $v$ of the ISP-Server feed no information gets lost or changed. This ensures integrity and replicates the feed exactly as is it is bytewies over the ISP to the server.

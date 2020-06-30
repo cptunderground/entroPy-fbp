@@ -5,7 +5,10 @@
 \documentclass[a4paper, 10pt, oneside]{memoir}
 %% Use the option citeauthor to be able to use citet. The default cite will still work.
 \usepackage[citeauthor]{basilea}
-
+\usepackage{pdfpages}
+\usepackage{xcolor}
+\usepackage{listings}
+\lstset{basicstyle=\footnotesize\ttfamily,language=Python,keywordstyle={\bfseries \color{blue}}}
 %% ----------------------------------------------------------------
 
 \title				{A Feed Bundle Protocol for Scuttlebutt}
@@ -70,7 +73,7 @@
 \end{appendices}
 %% ----------------------------------------------------------------
 \thesisback
-\input{./Back/DeclarationOfAuthorship}
+\includepdf[pages=-]{Declaration_on_Scientific_Integrity_JJa_signed.pdf}
 %% ----------------------------------------------------------------
 \end{document}
 %% ----------------------------------------------------------------
