@@ -24,7 +24,7 @@ In this table we can see a basic contract with all the information needed. This 
         ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
     \end{tabular}  
 \end{center}
-This even more simplified base, which runs on a localhost over the filesystem, can be stored in any suitable file type and the rest of the contract such as for example the feed-IDs can be built by the program, if rules are defined over the entire network. These contracts must be stored somewhere in the software, but the implementation can be freely chosen.
+This even more simplified base, which runs on a localhost over the filesystem, can be stored in any suitable file type and the rest of the contract, such as the feed-IDs can be built by the program, if the rules are defined over the entire network. These contracts must be stored somewhere in the software, but the implementation can be freely chosen.
 
 \section{Replicated Feeds}
 This implementation was developed by Prof. Dr. Christian Tschudin. It is a very simplified version of an append-only log in the .pcap format, generated from a Curve25519 key pair. Every log entry is signed by some private key, which leads to integrity, but not security. The entire security aspect was omitted from this thesis.
@@ -32,7 +32,7 @@ This implementation was developed by Prof. Dr. Christian Tschudin. It is a very 
 The Feed is a list of log entries. Each log entry consists of three main parts: meta data, the signature and the content. The meta data holds the information about the current log entry, such as the feed-ID of its feed, its sequence number, which is the internal position of the log entry in the feed, a hash reference to the log entry before and its own hash value of the content for the next log entry to reference. Next comes the signature, which signs the meta data. The content part is what is actually put into the log entry. Since all the information is stored in the cbor2\footnote{Quelle} format and held in a pcap file, the result is a binary array which holds important properties useful for the bundling. Either a new log entry can be written with a key or an existing log entry can be appended to the binary array without validation. This mechanism is a key feature for the bundling aspect.
 \textit{BILD}
 \subsection{Replication}
-The replication mechanism is invoked after each write operation to a feed. Generally speaking, this could be realised easily with TCP or UDP in a real network. Since this basic implementation has no connection to the internet, it replicates feeds in the filesystem. This was solved by just copying the feed to the corresponding folder given in the contract.
+The replication mechanism is invoked after each write operation to a feed. Generally speaking, this could be realised easily with TCP or UDP in a real network. Since this basic implementation has no connection to the internet, it replicates feeds in the filesystem. This was solved by simply copying the feed to the corresponding folder given in the contract.
 \section{RPC}
 Having the contract and replicated feeds, the type of RPC-protocol has its turn. To communicate between two participants, four general methods are needed as listed below. By having a simple serialisable data structure for requests and results, it is easy to incorporate them into the feeds. Requests call services, which use the given attributes and produce a result, as advanced in the original RPC-protocol by \citet{birrell1984implementing}.
 \section{Data Structure}
@@ -110,7 +110,7 @@ client_result = {'ID':0, 'type':'result',
 This implementation corresponds to a client, ISP and server, which do not know how the other lables their feeds, nor over which public key the connection will be handled. This lays the base for several ISP nodes discussed in the Future Work Section. 
 
 \subsection{Multiplexing}
-Having now an introduced client we need to have a look at the communication between it and the server. As already mentioned, there is no direct feed replication between the client and the server over the ISP. Instead the requests are taken from the Client-Server feed at the ISP and multiplexed into the ISP-Server feed. Afterwards, this same request is demultiplexed from the replication of the ISP-Server feed in the server and transferred to the Client-Server feed representation in the server.\\
+Having now an introduced client we need to have a look at the communication between it and the server. As previously mentioned, there is no direct feed replication between the client and the server over the ISP. Instead the requests are taken from the Client-Server feed at the ISP and multiplexed into the ISP-Server feed. Afterwards, this same request is demultiplexed from the replication of the ISP-Server feed in the server and transferred to the Client-Server feed representation in the server.\\
 In order to achieve this, a new type is accepted and a new field is added in the RPC-data structure: the mux-type and the meta-field. Here an abstraction of the structure of a ’mux-request’:\\
 \begin{lstlisting}
 mux_request = {'ID':1, 'type':'mux', 
