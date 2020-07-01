@@ -35,13 +35,18 @@ The replication mechanism is invoked after each write operation to a feed. Gener
 \section{RPC}
 Having the contract and replicated feeds, the type of RPC-protocol has its turn. To communicate between two participants, four general methods are needed as listed below. By having a simple serialisable data structure for requests and results, it is easy to incorporate them into the feeds. Requests call services, which use the given attributes and produce a result, as advanced in the original RPC-protocol by \citet{birrell1984implementing}.
 \section{Data Structure}
-A suitable data structure or format is a dictionary or a JSON-String, having keys that ref- erence a field, as well as being serialisable. In this structure, an ID must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
+A suitable data structure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure, an \lstinline{ID} must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
 
-\begin{lstlisting}
-request = {'ID':0, 'type':'request', 'service':'echo', 
-           'attributes':['An echo']}
-result = {'ID':0, 'type':'result', 'result':'An echo'}
-\end{lstlisting}
+\begin{figure}
+    
+        \begin{lstlisting}
+            request = {'ID':0, 'type':'request', 'service':'echo', 
+                       'attributes':['An echo']}
+            result = {'ID':0, 'type':'result', 'result':'An echo'}
+            \end{lstlisting}
+    
+\end{figure}
+
 
 
 Having the ID as an identifier, the caller can look up the request made and map the result to the call.
@@ -121,7 +126,7 @@ Having now an introduced client we need to have a look at the communication betw
 In order to achieve this, a new type is accepted and a new field is added in the RPC-data structure: the mux-type and the meta-field. Here an abstraction of the structure of a ’mux-request’:\\
 \begin{lstlisting}
 mux_request = {'ID':1, 'type':'mux', 
-               'meta':{'feed\_ID':'cli001_ser001'},
+               'meta':{'feed_ID':'cli001_ser001'},
                'request':{'ID':1, 'type':'request', 'service':'echo', 
                           'attributes':'hello server'}
               }
@@ -135,5 +140,10 @@ mux_result = {'ID':1, 'type':'mux',
              }
 \end{lstlisting}
 Again, the meta data describes how to handle this specific mux-result in the ISP. If we approach the problem like this, one particular inconsistency occurs. When writing in feeds with this approach, the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request, and then rewriting it, the whole log entry is put as the value of the key request or result and at demultiplexing stage appended bytewise to the corresponding feed.
-\textit{Picture}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{full_mux}
+    \caption{A full multiplexed RPC-request from client to server}
+    \label{fig:fullmux}
+\end{figure}
 Clearly seen is the full log entry w of the Client-Server feed. By putting w directly in the log entry v of the ISP-Server feed no information gets lost or changed. This ensures integrity and replicates the feed exactly as it is: bytewise over the ISP to the server.

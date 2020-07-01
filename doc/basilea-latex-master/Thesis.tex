@@ -8,7 +8,30 @@
 \usepackage{pdfpages}
 \usepackage{xcolor}
 \usepackage{listings}
-\lstset{basicstyle=\footnotesize\ttfamily,language=Python,keywordstyle={\bfseries \color{blue}}}
+\definecolor{pblue}{rgb}{0.13,0.13,1}
+\definecolor{pgreen}{rgb}{0,0.5,0}
+\definecolor{pred}{rgb}{0.9,0,0}
+\definecolor{pgrey}{rgb}{0.46,0.45,0.48}
+\definecolor{blue}{HTML}{DAE8FC}
+\definecolor{darkblue}{HTML}{156dec}
+\definecolor{mint}{HTML}{2ed0c3}
+
+\lstset{language=Python,
+  showspaces=false,
+  showtabs=false,
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  commentstyle=\color{pgreen},
+  keywordstyle=\color{pblue},
+  stringstyle=\color{pred},
+  basicstyle=\footnotesize\ttfamily,
+  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%}
+}
+\newenvironment{python}
+{\begin{mdframed}[backgroundcolor=light-gray, roundcorner=4pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]}
+{\end{mdframed}}
+
 %% ----------------------------------------------------------------
 
 \title				{A Feed Bundle Protocol for Scuttlebutt}
