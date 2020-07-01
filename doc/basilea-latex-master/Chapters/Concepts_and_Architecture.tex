@@ -1,16 +1,20 @@
 \chapter{Concepts and Architecture}
-As described in the chapter Related Work, SSB is an ID-centric single feed driven environment, where onboarding is challenging. 
-This prerequisite changes from the beginning. The basic idea of the Feed Bundle Protocol is to split up this ID-centric environment into replicated feed-pairs, where two participants hold at least one of such a pair.  This pair contains the whole dialog between two identities which have a contract with each other. Similar to the tin can phone from your childhood, where you had two cans connected for every friend you want to communicate with. By introducing intermediary service providers, the onboarding happens at contract signing. Clients have a possibility to connect to new servers via this ISP and create a new feed-pair for each server, which is replicated over the same ISP. Since this approach means an enormous amount of feed replications between ISP and server, these feeds are bundled again.
+Secure Scuttlebutt is an ID-centric single feed driven environment, where onboarding is challenging. 
+In this chapter the thesis presents the technical detail with a Feed Bundle Protocol which gives a better support for onboarding into the SSB environment. The basic idea of the Feed Bundle Protocol is to split up this ID-centric environment into replicated feed-pairs, where two participants hold at least one of such a pair.  This pair contains the whole dialog between two identities which have a contract with each other. Similar to the tin can phone from your childhood, where you had two cans connected for every friend you want to communicate with. By introducing intermediary service providers, the onboarding happens at contract signing. Clients have a possibility to connect to new servers via this ISP and create a new feed-pair for each server, which is replicated over the same ISP. Since this approach means an enormous amount of feed replications between ISP and server, these feeds are bundled again.
 
 \section{Tin Can Analogy}
 
 This system as described may seem difficult to understand, but the description can be simplified. Think of it as a tin can phone from your childhood, but where you have two cans on each side. You need this two-can set up for each friend with whom you want to communicate. You start with a connection to your best friend, the one you trust the most. You talk into the “talk can” and that can ’saves’ everything you say to it. From your other can, the “listen can”, you are only able to hear things from your friend, but this can also saves everything your friend says. By labeling the cans with our names in the format "talker-listener", we distinguish them. The You-Friend can is therefore you "talk can" and your friends "listen can", the Friend-You can the other way around. This is one replicated feed-pair, having both cans on both sides.
 \\
+
 Having this, the dialog needs a way or language to express expectations or requests from one side to communicate with each other, where you can declare what you want from your friend, which leads us to the simplified RPC protocol. After a while, it gets boring only talking to this one friend. Luckily, your friend is the coolest kid in school and knows everyone and even tells you about everyone he knows. Then you ask your friend if he could introduce you to his other friends, since you are tired of only talking to your friend. This introduction process is real, human social behavior, not face to face, but via tin can phone.
 \\
+
 After your friend has introduced you to one of his other friends and this other friend decides to be friends with you, you and your new friend start to build a new tin can phone, with the “talk can” and “listen can” tins. Due to the fact that you are too far away from each other, you cannot just have a cord from one to the other, so your best friend allows you to route the cord through his house. This corresponds to the replication of the feeds over an intermediary connectivity provider.
+\\
 
 Having this, the dialog needs a way or language to express expectations or requests from either side to communicate with each other, where you can declare what you want from your friend. Leading to the simplified RPC protocol.\\ 
+
 There is another problem, however: you are not the only one. After a while, your best friend has so many connections running through his house from all his friends who want to talk to their other friends, that here is an enormous number of strings going to that other friend. Your friend decides to combine all these strings into one and send all messages through this one, single bundled connection, which contains all the information about which tin can it needs to come out of at the end. He multiplexes. Given that little story, we can derive concepts and architecture for the tin can phones of the future.
 
 \begin{figure}
@@ -24,18 +28,18 @@ There is another problem, however: you are not the only one. After a while, your
 Now we can see the foundation of the friendship. The friendship between you and your best friend and the friendship between your best friend and his other friend. By the same token, it is the business contracts between the nodes that provide the foundation for the entire connectivity, protocol and bundling. These contracts are the most important building blocks of the whole thesis since they define the behaviour of the replicated feed-pairs, onboarding mechanics and bundling.
 
 \subsection{Contract Values}
-To build the tin can phone, three basic identifiers are needed. First of all, you have to trust each other. This corresponds to the concept of a legal contract between the two parties. Next you need to know the names to label the phones, so you know who you are talking to. These are the public keys. Since everybody in your house can use the tin phone, you also need some sort of code so that your friend knows that it is you who is sending the message and not your mother. These are the private keys. Having that, you need your two tin cans, the feed-pair and two wires, the replication process.
+To build the tin can phone, three basic identifiers are needed. First of all, you have to trust each other. This corresponds to the concept of a legal contract between the two parties. Next you need to know the names to label the phones, so you know who you are talking to. These are the public keys. Since everybody in your house can use the tin phone, you also need some sort of secret so that your friend knows that it is you who is sending the message and not your mother. These are the private keys. Having that, you need your two tin cans, the feed-pair and two wires, the replication process.
 \\
 If you do not know your friend’s address, you do not know where to put that wire, so you need some sort of address as well. The address, as the name is well chosen, refers to the IP-address, since this is the most commonly known address of a computer. Last but not least, to distinguish all the cans, you label them corresponding to the "talker-listener" format. Therefore, a contract consists of a public key, a private key, a feed-ID and the peers public key, feed-ID and location. Since a contract has been established, we need to know what happens in the tin cans and the wire. This leads to the replicated feeds. 
 
-\textit{Eventually Picture of identities with contract}
+
 
 \section{Replicated Feeds}
-The following statements can be extracted from the Scuttlebutt Protocol Guide: ”A feed is a signed append-only sequence of messages. Each identity has exactly one feed."\footnote{\url{https://scuttlebot.io/more/protocols/secure-scuttlebutt.html}} and "Messages from feeds 3 hops out are replicated to help keep them available for others."\footnote{\url{https://scuttlebot.io/more/protocols/secure-scuttlebutt.html}} - So what do these properties mean?\\
+The following statements can be extracted from the Scuttlebutt Protocol Guide [\citenum{pubs}]: ”A feed is a signed append-only sequence of messages. Each identity has exactly one feed." and "Messages from feeds 3 hops out are replicated to help keep them available for others." - So what do these properties mean?\\
 
-What can be derived from this information? Signing ensures that you can trust that this message was created by one specific identity or more specifically, the encryption of plain text with the sender’s private key to a cipher text. The crypto text can be deciphered with the sender’s public key.\footnote{quelle} Therefore, this guarantees integrity. Append-only means this sequence can not be forged. So there is no possible way to modify or delete any entries that were appended at any time.\footnote{Feeds - \url{https://ssbc.github.io/scuttlebutt-protocol-guide/}} This append-only property is realized with a mechanism which references the previously generated message.\footnote{Feeds - \url{https://ssbc.github.io/scuttlebutt-protocol-guide/}} The ID-centric architecture described means exactly one identity (key) is mapped to exactly one feed, where every single bit of information an identity creates and "consumes"\footnote{describe better} in the SSB universe is stored in this feed.
+What can be derived from this information? Signing ensures that you can trust that this message was created by one specific identity or more specifically, the encryption of plain text with the sender’s private key to a cipher text. The crypto text can be deciphered with the sender’s public key.\footnote{Wikipedia - \url{https://en.wikipedia.org/wiki/Public-key_cryptography - retrieved 27.06.2020}} Therefore, this guarantees integrity. Append-only means this sequence can not be forged. So there is no possible way to modify or delete any entries that were appended at any time [\citenum{ssbc}]. This append-only property is realized with a mechanism which references the previously generated message [\citenum{ssbc}]. The ID-centric architecture described means exactly one identity (key) is mapped to exactly one feed, where every single bit of information an identity creates in the SSB universe is stored in this feed [\citenum{ssbc}].
 \\
-There is a lot more going on in the SSB feed and protocol, but an adapted simplified version with three fields\textit{(Figure link and simplify even more)} is more than sufficient for this thesis. 
+There is a lot more going on in the SSB feed and protocol, but an adapted simplified version with three fields is more than sufficient for this thesis. 
 
 \begin{figure}
     \centering
@@ -44,9 +48,7 @@ There is a lot more going on in the SSB feed and protocol, but an adapted simpli
     \label{fig:feed_schema}
 \end{figure}
 
-
-
-These properties underline the trust by guaranteeing completeness and validity of the information read in a feed. We can, however, see the sticking point in the replication of ID-centric feeds. Since the replication of the SSB protocol always replicates the whole feed with all information to all peers three hops away from a single identity, there is great amount of replication work done. This causes latency and long scuttling time (feed update).\footnote{Quelle} By splitting the feeds into smaller ones and having the effective communication between two parties bundled in the feed pairs mentioned previously, we try to bypass this bottleneck. As a result, we have a diagram like this: For the sake of clarity, only the situation between the client and the ISP is shown. 
+These properties in figure \ref{fig:feed_schema} underline the trust by guaranteeing completeness and validity of the information read in a feed. We can, however, see the sticking point in the replication of ID-centric feeds. Since the replication of the SSB protocol always replicates the whole feed with all information to all peers three hops away from a single identity, there is great amount of replication work done. This causes latency and long scuttling time (feed update).\footnote{Experiance based over Patchwork [\citenum{patchwork}]} By splitting the feeds into smaller ones and having the effective communication between two parties bundled in the feed pairs mentioned previously, we try to bypass this bottleneck. As a result, we have the diagram in figure \ref{fig:contract_cli_isp}. For the sake of clarity, only the situation between the client and the ISP is shown. 
 
 \begin{figure}
     \centering
@@ -56,11 +58,11 @@ These properties underline the trust by guaranteeing completeness and validity o
 \end{figure}
 The replicator or the replication process has it first appearance. As a concept, there is some sort of replicator instance or procedure that replicates the feeds to the corresponding address or location. Let's take a closer look at the implementation part. \\
 Having this setup, the next step is to have a possibility to communicate, so the client can request information from the ISP’s real database.
-
+\enlargethispage{\baselineskip}
 \pagebreak
 \section{Remote Procedure Call}
-As explained in the section Related Work, Remote Procedure Calls are a useful paradigm for providing communication across a
-network between programs (\citet{birrell1984implementing}). This faces many challenges, but these are not particularly relevant to this stage in the development of the Feed Bundle Protocol. Therefore, the RPC used in this section is a very simplified version.\\
+As explained in the section Related Work, Remote Procedure Calls [\citenum{birrell1984implementing}] are a useful paradigm for providing communication across a
+network between programs. This faces many challenges, but these are not particularly relevant to this stage in the development of the Feed Bundle Protocol. Therefore, the RPC used in this section is a very simplified version.\\
 The idea is to have a caller, in our case the client, and a callee, the ISP or server. Having this kind of request–response protocol, an RPC-request is initiated by the caller, which sends a request to a callee in order to execute a specified procedure with given attributes. However, "sending" is not the appropriate terminology for an environment with the replicated feeds. The RPC-request is written in the Caller-Callee feed, which is replicated to the callee. When the replication is complete, the callee is notfied of the feed change and can read the request. After processing the request, the result is written in the Callee-Caller feed and the caller can use the result as needed. In our case, these specified procedures are called services. By having only one such service e.g. the echo-service, which simply echoes the attributes back to the caller, it is ensured the RPC-protocol works as defined. The introducing and detrucing mechanics, described in the next section, can also be summarized in such services, where the caller makes, for example, an RPC-request to the introduce-service with the necessary parameters. 
 
 %\section{v0.2}
@@ -97,7 +99,7 @@ different. After a server accepts a client, the server generates the entire feed
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{mux_schema}
-    \caption{multiplexing}
+    \caption{Bundling of the Client-Server feed in the ISP-Server feed.}
     \label{fig:mux}
 \end{figure}
 

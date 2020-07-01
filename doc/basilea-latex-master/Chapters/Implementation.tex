@@ -14,7 +14,7 @@ Implementing the contracts in a prototype implementation is significantly easier
     \end{tabular}
 \end{center}
 
-In this table we can see a basic contract with all the information needed. This contract can be broken down even more, since the feed-IDs are just appended public keys. In the public and private key fields a first abstraction to the real-world application is made, the public and private keys would most likely be some 256-bits long integer key pairs for example Curve25519\footnote{Quelle} . This would result in a 64 digit long hexadecimal representation. The terms here act as simplification and easier distinguishable keys. Having this setup for example with a Curve25519 key pair, it is best practice to store them in a secrets or key file. Therefore the most basic contract can look like this:
+In this table we can see a basic contract with all the information needed. This contract can be broken down even more, since the feed-IDs are just appended public keys. In the public and private key fields a first abstraction to the real-world application is made, the public and private keys would most likely be some 256-bits long integer key pairs for example Curve25519 [\citenum{hankerson2006guide}]. This would result in a 64 digit long hexadecimal representation. The terms here act as simplification and easier distinguishable keys. Having this setup for example with a Curve25519 key pair, it is best practice to store them in a secrets or key file. Therefore the most basic contract can look like this:
 
 \begin{center}  
     \begin{tabular}{llll} \toprule
@@ -27,10 +27,9 @@ In this table we can see a basic contract with all the information needed. This 
 This even more simplified base, which runs on a localhost over the filesystem, can be stored in any suitable file type and the rest of the contract, such as the feed-IDs can be built by the program, if the rules are defined over the entire network. These contracts must be stored somewhere in the software, but the implementation can be freely chosen.
 
 \section{Replicated Feeds}
-This implementation was developed by Prof. Dr. Christian Tschudin. It is a very simplified version of an append-only log in the .pcap format, generated from a Curve25519 key pair. Every log entry is signed by some private key, which leads to integrity, but not security. The entire security aspect was omitted from this thesis.
+This implementation was developed by Prof. Dr. Christian Tschudin [\citenum{entropy}]. It is a very simplified version of an append-only log in the .pcap format, generated from a Curve25519 key pair. Every log entry is signed by some private key, which leads to integrity, but not security. The entire security aspect was omitted from this thesis.
 \subsection{Structure}
-The Feed is a list of log entries. Each log entry consists of three main parts: meta data, the signature and the content. The meta data holds the information about the current log entry, such as the feed-ID of its feed, its sequence number, which is the internal position of the log entry in the feed, a hash reference to the log entry before and its own hash value of the content for the next log entry to reference. Next comes the signature, which signs the meta data. The content part is what is actually put into the log entry. Since all the information is stored in the cbor2\footnote{Quelle} format and held in a pcap file, the result is a binary array which holds important properties useful for the bundling. Either a new log entry can be written with a key or an existing log entry can be appended to the binary array without validation. This mechanism is a key feature for the bundling aspect.
-\textit{BILD}
+The Feed is a list of log entries. Each log entry consists of three main parts: meta data, the signature and the content. The meta data holds the information about the current log entry, such as the feed-ID of its feed, its sequence number, which is the internal position of the log entry in the feed, a hash reference to the log entry before and its own hash value of the content for the next log entry to reference. Next comes the signature, which signs the meta data. The content part is what is actually put into the log entry. Since all the information is stored in the CBOR [\citenum{bormann2013concise}] format and held in a pcap file, the result is a binary array which holds important properties useful for the bundling. Either a new log entry can be written with a key or an existing log entry can be appended to the binary array without validation. This mechanism is a key feature for the bundling aspect.
 \subsection{Replication}
 The replication mechanism is invoked after each write operation to a feed. Generally speaking, this could be realised easily with TCP or UDP in a real network. Since this basic implementation has no connection to the internet, it replicates feeds in the filesystem. This was solved by simply copying the feed to the corresponding folder given in the contract.
 \section{RPC}
@@ -49,7 +48,7 @@ Having the ID as an identifier, the caller can look up the request made and map 
 \section{Services}
 Services are the procedures called by the caller and executed by the callee. In the feed bundle protocol there are some key services which have to be considered:
 \begin{itemize}
-    \item echo - Tt just returns the given attributes.
+    \item echo - It just returns the given attributes.
     \item get\_service\_catalog - The caller needs a list of all services the caller has available.
     \item introduce - This service passes a request to the server specified in the attributes and introduces the caller(client) to it and signs a contract.
     \item detruce - This closes an previously established contract and ereases all information built on it.
@@ -74,6 +73,13 @@ This method also to follows on a detected feed change, takes the result and clos
 \section{Bundling}
 Leading to the bundling key element, the other components were laid out and specifically designed for this. Two approaches to bundling can be made. One consists of a single feed-pair between ISP and the server where all the communication happens, the other involves two feed-pairs where one acts only for request from the ISP to the server and the other only for multiplexed client requests. In this section, the first approach is discussed, since they do not differ significantly.
 \subsection{Introducing and Detrucing}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{full_rpc}
+    \caption{A full RPC-request for the introduce-service}
+    \label{fig:fullprc}
+\end{figure}
+
 As seen in the RPC implementation, a client calls the introduce-service with the server it wants to be introduced to. At this point, the ISP holds a request from the client. The ISP does an RPC-request by itself to the server as followed:
 \\
 Client request: \begin{lstlisting}
@@ -108,6 +114,7 @@ client_result = {'ID':0, 'type':'result',
                  }
 \end{lstlisting}
 This implementation corresponds to a client, ISP and server, which do not know how the other lables their feeds, nor over which public key the connection will be handled. This lays the base for several ISP nodes discussed in the Future Work Section. 
+
 
 \subsection{Multiplexing}
 Having now an introduced client we need to have a look at the communication between it and the server. As previously mentioned, there is no direct feed replication between the client and the server over the ISP. Instead the requests are taken from the Client-Server feed at the ISP and multiplexed into the ISP-Server feed. Afterwards, this same request is demultiplexed from the replication of the ISP-Server feed in the server and transferred to the Client-Server feed representation in the server.\\
