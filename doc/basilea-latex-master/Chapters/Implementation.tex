@@ -37,15 +37,15 @@ Having the contract and replicated feeds, the type of RPC-protocol has its turn.
 \section{Data Structure}
 A suitable data structure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure, an \lstinline{ID} must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
 
-\begin{figure}
-    
+
+    \begin{python}
         \begin{lstlisting}
             request = {'ID':0, 'type':'request', 'service':'echo', 
                        'attributes':['An echo']}
             result = {'ID':0, 'type':'result', 'result':'An echo'}
             \end{lstlisting}
-    
-\end{figure}
+    \end{python}
+
 
 
 
@@ -53,27 +53,44 @@ Having the ID as an identifier, the caller can look up the request made and map 
 \section{Services}
 Services are the procedures called by the caller and executed by the callee. In the feed bundle protocol there are some key services which have to be considered:
 \begin{itemize}
-    \item echo - It just returns the given attributes.
-    \item get\_service\_catalog - The caller needs a list of all services the caller has available.
-    \item introduce - This service passes a request to the server specified in the attributes and introduces the caller(client) to it and signs a contract.
-    \item detruce - This closes an previously established contract and ereases all information built on it.
-    \item get\_servers - A list of servers is needed to call the introduce service. Since the caller has no knowledge of servers, this is essential.
+    \item \lstinline{echo} - It just returns the given attributes.
+    \item \lstinline{get_service_catalog} - The caller needs a list of all services the caller has available.
+    \item \lstinline{introduce} - This service passes a request to the server specified in the attributes and introduces the caller(client) to it and signs a contract.
+    \item \lstinline{detruce} - This closes an previously established contract and ereases all information built on it.
+    \item \lstinline{get_servers} - A list of servers is needed to call the introduce service. Since the caller has no knowledge of servers, this is essential.
 \end{itemize}
 \section{API}
 As a disclaimer, these API methods correspond only to the logical aspect of the pseudo code. There are many ways to implement them in differing software-architecturial styles, the implementation only shows what is minimally needed and executed.
 \subsection{Send Request}
-\lstinputlisting[]{Code/send_request.py}
+The send\_request method needs to have knowledge of the servie to be invoke and its attributes, as well as a destination. As described above, it is not a "sending" in the old-fashioned way, the destination corresponds to the Caller-Callee feed where the caller is the source and the Callee is the destination. Given these parameters, a request can be formed and written to the destination feed, whereby the feed must be replicated afterwards.
+\begin{python}
+    \lstinputlisting[]{Code/send_request.py}
+    
+\end{python}
 
-The send\_request method needs to have knowledge of the servie to be invoke and its attributes, as well as a destination. As described above, it is not a "sending" in the old-fashioned way, the destination corresponds to the Caller-Callee feed where the caller is the source and the Callee is the destination. Given these parameters, a request can be formed and written to the destination feed, whereby the feed must be replicated afterwards. 
+ 
 \subsection{Read Request}
-\lstinputlisting[]{Code/read_request.py}
 This method needs to follow on a detected feed change. This can be realised either by a global polling mechanism, which invokes the read\_request method, or directly in the method by listening to a feed. It takes the request, extracts its contents and invokes the specified service and waits for its result. Afterwards, it either returns the result or passes it directly to the send\_result method.
+\begin{python}
+    \lstinputlisting[]{Code/read_request.py}
+    
+\end{python}
+
+
 \subsection{Send Result}
-\lstinputlisting[]{Code/send_result.py}
 This method is very similar to the send\_request method. It uses the previously executed request to gain information about the ID, forms the result and writes it to the Callee-Caller feed.
+\begin{python}
+\lstinputlisting[]{Code/send_result.py}
+    
+\end{python}
+
 \subsection{Read Result}
-\lstinputlisting[]{Code/read_result.py}
 This method also to follows on a detected feed change, takes the result and closes the request. Due to the fact that quite some time has elapsed since the send\_request method, there is also a threading issue. Whether the send\_request method is blocking or not depends on the overlay of the FBP and cannot be decided in general, although it is blocking in the implementation of \citet{birrell1984implementing}. Therefore, it needs to be taken into account, but not considered at this API level.
+\begin{python}
+\lstinputlisting[]{Code/read_result.py}
+    
+\end{python}
+
 
 \section{Bundling}
 Leading to the bundling key element, the other components were laid out and specifically designed for this. Two approaches to bundling can be made. One consists of a single feed-pair between ISP and the server where all the communication happens, the other involves two feed-pairs where one acts only for request from the ISP to the server and the other only for multiplexed client requests. In this section, the first approach is discussed, since they do not differ significantly.
@@ -87,19 +104,23 @@ Leading to the bundling key element, the other components were laid out and spec
 
 As seen in the RPC implementation, a client calls the introduce-service with the server it wants to be introduced to. At this point, the ISP holds a request from the client. The ISP does an RPC-request by itself to the server as followed:
 \\
-Client request: \begin{lstlisting}
+\begin{python}
+    
+\begin{lstlisting}
 client_request = {'ID':0, 'type':'request', 'service':'introduce', 
                   'attributes':'ser001'}
 \end{lstlisting}
-ISP request: 
 \begin{lstlisting}
 isp_request = {'ID':0, 'client_request_ID':0, 'type':'request', 
                'service':'introduce', 'attributes':{'public_key':'cli001'}}
 \end{lstlisting}
+\end{python}
 
 
 In this request, everything the server needs to know is given. After creating the entire feed-pair and setting up the contract, the result is returned to the ISP.
 \\
+\begin{python}
+    
 \begin{lstlisting}
 isp_result = {'ID':0, 'client_request_ID':0, 'type':'result', 
               'result':{'public_key':'ser001', 
@@ -108,8 +129,12 @@ isp_result = {'ID':0, 'client_request_ID':0, 'type':'result',
                         }
              }
 \end{lstlisting}
+\end{python}
+
 With this information, the ISP can build the Server-Client feed and replicate it, since the location of the client is already known.
 Afterwards, the client receives their result on the initial introduce-request and can build the Client-Server feed and replicate it to the ISP.\\
+\begin{python}
+    
 \begin{lstlisting}
 client_result = {'ID':0, 'type':'result', 
                  'result':{'public_key':'ser001', 
@@ -118,12 +143,16 @@ client_result = {'ID':0, 'type':'result',
                           }
                  }
 \end{lstlisting}
+\end{python}
+
 This implementation corresponds to a client, ISP and server, which do not know how the other lables their feeds, nor over which public key the connection will be handled. This lays the base for several ISP nodes discussed in the Future Work Section. 
 
 
 \subsection{Multiplexing}
 Having now an introduced client we need to have a look at the communication between it and the server. As previously mentioned, there is no direct feed replication between the client and the server over the ISP. Instead the requests are taken from the Client-Server feed at the ISP and multiplexed into the ISP-Server feed. Afterwards, this same request is demultiplexed from the replication of the ISP-Server feed in the server and transferred to the Client-Server feed representation in the server.\\
 In order to achieve this, a new type is accepted and a new field is added in the RPC-data structure: the mux-type and the meta-field. Here an abstraction of the structure of a ’mux-request’:\\
+\begin{python}
+    
 \begin{lstlisting}
 mux_request = {'ID':1, 'type':'mux', 
                'meta':{'feed_ID':'cli001_ser001'},
@@ -131,14 +160,20 @@ mux_request = {'ID':1, 'type':'mux',
                           'attributes':'hello server'}
               }
 \end{lstlisting}
+\end{python}
+
 The mux type ensures that the log entry is not designed for the read result method of the RPC and all additional information needed by the server is given in the meta field. Any server reading this knows in which feed the request belongs and writes it into this feed and performs the requested service form there. The result is as followes,d written in the Server-ISP
 feed:\\
+\begin{python}
+    
 \begin{lstlisting}
 mux_result = {'ID':1, 'type':'mux', 
               'meta':{'feed_ID':'ser001_cli001'},
               'result':{'ID':1, 'type':'result', 'result':'hello server'}
              }
 \end{lstlisting}
+\end{python}
+
 Again, the meta data describes how to handle this specific mux-result in the ISP. If we approach the problem like this, one particular inconsistency occurs. When writing in feeds with this approach, the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request, and then rewriting it, the whole log entry is put as the value of the key request or result and at demultiplexing stage appended bytewise to the corresponding feed.
 \begin{figure}
     \centering
