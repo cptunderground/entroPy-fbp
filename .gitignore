@@ -129,3 +129,5 @@ dmypy.json
 
 # JetBrains Idea Folder
 src/.idea/*
+src/feeds/*
+!*/src/feeds/README.md

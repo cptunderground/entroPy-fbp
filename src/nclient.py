@@ -216,6 +216,15 @@ def send_request(request: dict):
     else:
         #checks if destination is a known server, else log that the request could not have been made
         if len(c_server_dict) != 0:
+            try:
+                server = c_server_dict[str(request['destination']).lower()]
+                wr_server_feed(feed_entry, server)
+                await_result(feed_entry['ID'])
+                next_request_ID += 1
+
+            except:
+                logging.warning(f'No server registered for {request["destination"]}, try to introduce first')
+            '''
             for server in c_server_dict.values():
                 if str(request['destination']).lower() == server.name:
                     wr_server_feed(feed_entry, server)
@@ -223,6 +232,7 @@ def send_request(request: dict):
                     next_request_ID += 1
                 else:
                     logging.warning(f'No server registered for {request["destination"]}, try to introduce first')
+            '''
         else:
             logging.info('No servers registered')
 
@@ -782,6 +792,7 @@ def start_watchdog(method_to_call):
     my_observer.start()
     try:
         while True:
+            print('----------------------------------------')
             method_to_call()
             time.sleep(1)
             logging.info('next input:')
@@ -857,6 +868,7 @@ if __name__ == '__main__':
         if request != None:
             read_request()
             send_request(request)
+            print(c_server_dict)
         else:
             print('')
 

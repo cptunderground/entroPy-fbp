@@ -499,7 +499,7 @@ def send_result(log_entry, result):
 
 
 def delete_e2e_feed(attributes):
-    cpk = attributes['public_key']
+    cpk = f'{attributes["public_key"]}_{server_config["name"]}'
     sclient = s_client_dict[cpk]
 
     os.remove(sclient.E2E_c_s_log)
@@ -790,7 +790,7 @@ def extract_client(data):
     print('extracting client')
     try:
         print(s_client_dict)
-        client = s_client_dict[data]
+        client = s_client_dict[f'{data}_{server_config["name"]}']
         return client
     except Exception as e:
         print(e)
@@ -801,7 +801,7 @@ def detruce_client(client: sClient):
     print('detrucing client')
 
     attributes = {
-        'public_key' : client.name
+        'public_key' : str(client.name)[0:6]
     }
 
     delete_e2e_feed(attributes)

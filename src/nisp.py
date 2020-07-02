@@ -794,18 +794,19 @@ def delete_E2E_feed(pk):
     logging.info(f'Deleting {pk} from sub_client_dict:{sub_client_dict}')
     try:
         sub_client = sub_client_dict[pk]
+        print(sub_client.to_string())
         try:
             os.remove(sub_client.client_isp_feed)
         except:
-            logging.warning(f'could not delete file {sub_client.client_isp_feed}')
+            logging.warning(f'could not delete file client-isp:{sub_client.client_isp_feed}')
         try:
             os.remove(sub_client.isp_client_key)
         except:
-            logging.warning(f'could not delete file {sub_client.isp_client_key}')
+            logging.warning(f'could not delete file:{sub_client.isp_client_key}')
         try:
             os.remove(sub_client.isp_client_feed)
         except:
-            logging.warning(f'could not delete file {sub_client.isp_client_feed}')
+            logging.warning(f'could not delete file isp-client {sub_client.isp_client_feed}')
     except:
         pass
     try:
@@ -838,8 +839,13 @@ def create_E2E_feed(server: Server, client: Client):
     # key_s_c = f'{location}/{spk}_{cpk}.key'
 
     rep = replicator.Replicator(f'{spk}_{cpk}.pcap', alias_s_c, isp_config[cpk]["c_location"])
-    sub_client = Client(cpk, alias_c_s, alias_s_c, None, -1, [], rep)
-    sub_client_dict[cpk] = sub_client
+
+    # very very dirty hack...
+    #while cpk in sub_client_dict.keys():
+     #   cpk = str(cpk) + str(cpk)
+    identity = f'{cpk}_{spk}'
+    sub_client = Client(identity, alias_c_s, alias_s_c, None, -1, [], rep)
+    sub_client_dict[identity] = sub_client
     print(f'sub_client_dict:{sub_client_dict}')
 
     feed_entry = {
@@ -864,7 +870,7 @@ def read_detruce(log_entry, client: Client):
     pk = log_entry['attributes']['public_key']
 
     #deleting feeds and keys
-    delete_E2E_feed(client.name)
+    delete_E2E_feed(f'{client.name}_{server.name}')
 
     # send_result(log_entry, client.name, client)
 
@@ -905,6 +911,9 @@ def read_introduce(log_entry, client: Client):
     except:
         invalid_server(log_entry, client)
 
+    c_pk = f'{c_pk}_{server.name}'
+    #while c_pk in sub_client_dict.keys():
+    #    c_pk = str(c_pk) + str(c_pk)
     # pass pk to server
     # pk = create_E2E_feed(server, client, c_pk)
 
@@ -993,7 +1002,7 @@ def server_incoming(server: Server):
 
             logging.info(f'Log entry: {e}')
 
-            client = client_dict[e[2]['source']]
+            client = client_dict[str(e[2]['source'])[0:6]]
 
             result = e[2]['result']
 
@@ -1057,13 +1066,13 @@ def server_incoming(server: Server):
             sub_client = sub_client_dict[key]
             delete_E2E_feed(key)
 
-            client = client_dict[key]
+            client = client_dict[str(key)[0:6]]
             ID = max(sub_client.highest_request_ID, client.highest_request_ID)
             client.highest_request_ID = ID + 1
             server.highest_introduce_ID += 1
 
             request = {
-                'ID': client.highest_request_ID,
+                'ID': client.highest_request_ID+1,
                 'introduce_ID': e[2]['introduce_ID'],
                 'type': 'request',
                 'service': 'detruce',
@@ -1101,37 +1110,7 @@ def server_incoming(server: Server):
     p.close()
 
 
-def handle_request(log_entry, client: Client):
-    logging.debug(log_entry)
-    if log_entry['service'] == 'introduce':
-        logging.debug('INTRODUCE')
-        read_introduce(log_entry, client)
-
-    elif log_entry['service'] == 'detruce':
-        logging.debug('DETRUCE')
-        read_detruce(log_entry, client)
-
-    elif log_entry['service'] == 'servicecatalog':
-
-        try:
-            logging.debug(f'Evaluating service')
-            f = eval(f'services.{log_entry["service"]}')
-            result = f(log_entry['attributes'])
-            send_result(log_entry, result, client)
-        except:
-            invalid_service(log_entry, client)
-
-    else:
-        try:
-            logging.debug(f'Evaluating service')
-            logging.debug(log_entry['service'])
-            f = eval(f'services.Service.{log_entry["service"]}')
-            result = f(log_entry['attributes'])
-            send_result(log_entry, result, client)
-        except:
-            invalid_service(log_entry, client)
-
-
+# following are again watchdog event functions
 def on_created(event):
     # TODO init on RT
     logging.debug(f"created: {event.src_path}")
@@ -1142,22 +1121,28 @@ def on_deleted(event):
 
 
 def on_modified(event):
-    # TODO Regex to check if it is feed file and then handle over feed file
+    # on a feed change - incoming replication - watchdog detects it and invokes this function
+    # it searches from which feed it came and procedes accordingly
+    print('--------------------------------------')
     logging.debug(f"Feed update:{event.src_path}")
     logging.warning(f'File modified:{event.src_path}')
     global client_dict
 
     for client in client_dict.values():
+
         if f'{event.src_path}' == client.client_isp_feed:
             logging.info(f'Handling client incoming')
             handle_new_requests(client)
 
+
     for sub_client in sub_client_dict.values():
+
         if f'{event.src_path}' == sub_client.client_isp_feed:
             logging.info(f'Handling SUB client incoming')
             handle_new_sub_request(sub_client)
 
     for server in server_dict.values():
+
         logging.debug(server.to_string())
         if f'{event.src_path}' == server.server_isp_feed:
             logging.info(f'Handling server incoming')
@@ -1169,6 +1154,12 @@ def on_moved(event):
 
 
 def multiplex_request(w, sub_client: Client):
+    '''
+    This method takes a full log entry and multiplexes it into the content section of another
+    :param w: full log entry with all information
+    :param sub_client: contract which holds source feed
+    :return:
+    '''
     e = cbor2.loads(w)
     if e[2] != None:
         e[2] = cbor2.loads(e[2])
@@ -1193,7 +1184,14 @@ def multiplex_request(w, sub_client: Client):
     server.replicator.replicate()
 
 
+
 def handle_new_sub_request(sub_client: Client):
+    '''
+    This method is invoked if an end-to-end feed is changed.
+    Since these are not directly replicated, it will be multiplexed accordingly.
+    :param sub_client: contract which holds e2e feed
+    :return:
+    '''
     p = pcap.PCAP(sub_client.client_isp_feed)
     p.open('r')
     for w in p:
@@ -1208,11 +1206,14 @@ def handle_new_sub_request(sub_client: Client):
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
 
+        print(e)
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
 
             logging.info(e)
+
             if request_ID > sub_client.highest_request_ID:
+
                 multiplex_request(w, sub_client)
 
 
