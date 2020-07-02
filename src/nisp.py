@@ -14,6 +14,10 @@ from replicator import replicator
 
 
 class Server():
+    '''
+    Holds all information about connected server - is the result of the contract or even can be seen as contract
+    '''
+
     def __init__(self, name: str, server_isp_feed: str, isp_server_feed: str, isp_server_key: str,
                  highest_introduce_ID: int,
                  open_introduces: list, replicator: replicator.Replicator):
@@ -49,6 +53,10 @@ class Server():
 
 
 class Client():
+    '''
+    Holds all information about connected client - is the result of the contract or even can be seen as contract
+    '''
+
     def __init__(self, name: str, client_isp_feed: str, isp_client_feed: str, isp_client_key: str,
                  highest_request_ID: int, open_requests: list, replicator: replicator.Replicator):
         self.name = name
@@ -83,6 +91,10 @@ class Client():
 
 
 def init():
+    '''
+    reads the contracts and generates feeds and keys for them, also stores this in each case in a client/server class
+    :return:
+    '''
     global client_names
     global client_dict
 
@@ -110,6 +122,7 @@ def init():
         i_location = isp_config["location"]
         s_location = isp_config[key]["c_location"]
 
+        # if feeds exist just stores them
         if os.path.exists(f'{i_location}/{alias_i_s}') and os.path.exists(f'{i_location}/{key_i_s}'):
 
             logging.info(f'Feed and key for {name} exist')
@@ -130,7 +143,7 @@ def init():
             client_class.replicator.replicate()
 
             # print(client_class.to_string())
-
+        # if only key file exists - generates feeds and stores them
         elif not os.path.exists(f'{i_location}/{alias_i_s}') and os.path.exists(f'{i_location}/{key_i_s}'):
 
             # print("key exists feed not")
@@ -163,6 +176,7 @@ def init():
             client_class.replicator.replicate()
 
 
+        # generates everything
         else:
             logging.info(f'Feed for {name} does not exist')
             logging.info(f'Creating feed for {name}')
@@ -200,7 +214,7 @@ def init():
             logging.info(f'Created Key for {name} in {isp_client_key}')
 
             pk = feed.get_public_key(isp_client_key)
-            # TODO exchange source and dest with public keys
+
             feed_entry = {
                 'type': 'init',
                 'alias': alias_i_s,
@@ -217,6 +231,7 @@ def init():
             client_class.replicator.replicate()
             # services.announce_all_services(client_class)
 
+    # creates isp-server feeds the same way as above for clients
     for key in isp_config['server_keys']:
         spk = isp_config[key]['spk']
         ipk = isp_config["ipk"]
@@ -316,7 +331,7 @@ def init():
             logging.info(f'Created Key for {name} in {isp_server_key}')
 
             pk = feed.get_public_key(isp_server_key)
-            # TODO exchange source and dest with public keys
+
             feed_entry = {
                 'type': 'init',
                 'alias': alias_i_s,
@@ -335,6 +350,11 @@ def init():
 
 
 def init_clients():
+    '''
+    this method initialises client-isp and isp-client feeds if they are already generated.
+    as well as sub clients, better said the connection for server-client and client-server feeds
+    :return:
+    '''
     global client_dict
     global client_names
 
@@ -348,12 +368,11 @@ def init_clients():
             for w in p:
 
                 e = cbor2.loads(w)
-                href = hashlib.sha256(e[0]).digest()
+
                 e[0] = cbor2.loads(e[0])
 
                 e[0] = pcap.base64ify(e[0])
-                fid = e[0][0]
-                seq = e[0][1]
+
                 if e[2] != None:
                     e[2] = cbor2.loads(e[2])
 
@@ -467,7 +486,6 @@ def init_clients():
 
             pass
 
-    # TODO SUB CLIENTS
     for name in sub_client_dict.keys():
         try:
             client = sub_client_dict[name]
@@ -566,6 +584,10 @@ def init_clients():
 
 
 def init_servers():
+    '''
+    same for the server-isp and isp-server feeeds
+    :return:
+    '''
     global server_dict
     global server_names
 
@@ -629,6 +651,14 @@ def init_servers():
 
 
 def send_result(log_entry, result, client: Client):
+    '''
+    This method takes a request, as well as its result and a client, where the destination feed is extracted.
+    Writes the result in the feed and replicates it.
+    :param log_entry: the request
+    :param result:  the result for the request
+    :param client:  the client contract
+    :return:
+    '''
     global next_result_ID
     feed_entry = {
         'ID': log_entry['ID'],
@@ -641,10 +671,15 @@ def send_result(log_entry, result, client: Client):
     client.highest_request_ID += 1
     wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
     client.replicator.replicate()
-    print('sent result')
+    logging.debug('Result sent')
 
 
 def send_request(request: dict):
+    '''
+    Same as in the client, the ISP can request services from the client. Works as the send_request in the clients code
+    :param request:
+    :return:
+    '''
     global next_request_ID
     global server_log
 
@@ -707,6 +742,12 @@ def invalid_destination(log_entry, client: Client):
 
 
 def read_request(log_entry: dict, client: Client):
+    '''
+    This function takes the request, evaluates its fields and handles the request by invoking the demanded service
+    :param log_entry: the request
+    :param client: the contract of the "source" feed
+    :return:
+    '''
     if log_entry['ID'] == None:
         invalid_format(log_entry, client)
     elif log_entry['type'] == None:
@@ -714,11 +755,43 @@ def read_request(log_entry: dict, client: Client):
     elif log_entry['service'] == None:
         invalid_format(log_entry, client)
     else:
-        handle_request(log_entry, client)
+        logging.debug(log_entry)
+        if log_entry['service'] == 'introduce':
+            logging.debug('INTRODUCE')
+            read_introduce(log_entry, client)
+
+        elif log_entry['service'] == 'detruce':
+            logging.debug('DETRUCE')
+            read_detruce(log_entry, client)
+
+        elif log_entry['service'] == 'servicecatalog':
+
+            try:
+                logging.debug(f'Evaluating service')
+                f = eval(f'services.{log_entry["service"]}')
+                result = f(log_entry['attributes'])
+                send_result(log_entry, result, client)
+            except:
+                invalid_service(log_entry, client)
+
+        else:
+            try:
+                logging.debug(f'Evaluating service')
+                logging.debug(log_entry['service'])
+                f = eval(f'services.Service.{log_entry["service"]}')
+                result = f(log_entry['attributes'])
+                send_result(log_entry, result, client)
+            except:
+                invalid_service(log_entry, client)
 
 
 def delete_E2E_feed(pk):
-    print(f'subclientdict:{sub_client_dict}')
+    '''
+    By deleting the contract and feeds, as well as keys, the connection is ended after a detruce
+    :param pk: key or name of the peer which ends a contract
+    :return:
+    '''
+    logging.info(f'Deleting {pk} from sub_client_dict:{sub_client_dict}')
     try:
         sub_client = sub_client_dict[pk]
         try:
@@ -740,7 +813,14 @@ def delete_E2E_feed(pk):
     except:
         pass
 
+
 def create_E2E_feed(server: Server, client: Client):
+    '''
+    On a introduce approval, the ISP creates the Server-Client feed, it has all informations in the contracts.
+    :param server: contract with server
+    :param client: contract with client
+    :return:
+    '''
     cpk = client.name
     spk = server.name
     location = isp_config["location"]
@@ -774,12 +854,19 @@ def create_E2E_feed(server: Server, client: Client):
 
 
 def read_detruce(log_entry, client: Client):
+    '''
+    This is the detruce-service
+    :param log_entry: detruce-requests
+    :param client: contract which has to be ended
+    :return:
+    '''
     server = server_dict[log_entry['attributes']['server']]
     pk = log_entry['attributes']['public_key']
 
+    #deleting feeds and keys
     delete_E2E_feed(client.name)
 
-    #send_result(log_entry, client.name, client)
+    # send_result(log_entry, client.name, client)
 
     attributes = {
         'server': log_entry['attributes']['server'],
@@ -787,6 +874,7 @@ def read_detruce(log_entry, client: Client):
         'public_key': pk
     }
 
+    # forming request for server.
     request = {
         "introduce_ID": server.highest_introduce_ID,
         'request_ID': log_entry['ID'],
@@ -804,8 +892,12 @@ def read_detruce(log_entry, client: Client):
 
 
 def read_introduce(log_entry, client: Client):
-    # TODO NEXT
-
+    '''
+    This is the introduce-service
+    :param log_entry: introduce-requests
+    :param client: participant information for new contract
+    :return:
+    '''
     # answer
     try:
         server = server_dict[log_entry['attributes']['server']]
@@ -816,7 +908,7 @@ def read_introduce(log_entry, client: Client):
     # pass pk to server
     # pk = create_E2E_feed(server, client, c_pk)
 
-    # dont send any aswer yet
+    # dont send any answer yet
     # send_result(log_entry, pk, client)
 
     attributes = {
@@ -835,7 +927,7 @@ def read_introduce(log_entry, client: Client):
         'attributes': attributes
     }
 
-    print('SERVER INTRODUCE')
+
     wr_feed(server.isp_server_feed, server.isp_server_key, request)
     server.open_introduces.append(server.highest_introduce_ID)
     server.highest_introduce_ID += 1
@@ -862,11 +954,17 @@ def read_introduce(log_entry, client: Client):
     '''
 
 
-def handle_approved_introduce(server: Server):
+def server_incoming(server: Server):
+    '''
+    This method is invoked on feed change of the servers feed it combines read_request and read_result for a server.
+    Since all communication is over a single feed
+    :param server: the contract the feed belongs to
+    :return:
+    '''
     global client_dict
 
-    print('REACHED APPROVAL STATE')
-    print(server.server_isp_feed)
+    logging.debug('REACHED APPROVAL STATE')
+    logging.debug(server.server_isp_feed)
     p = pcap.PCAP(server.server_isp_feed)
     p.open('r')
     for w in p:
@@ -886,16 +984,19 @@ def handle_approved_introduce(server: Server):
             e[2] = cbor2.loads(e[2])
 
         if e[2]['type'] != 'initiation':
-            print(e[2])
-            print(f'for mux introduce id:{e[2]["introduce_ID"]},{server.highest_introduce_ID}')
+            logging.debug(e[2])
+            logging.debug(f'for mux introduce id:{e[2]["introduce_ID"]},{server.highest_introduce_ID}')
+
+        #read introduce result
         if isinstance(e[2], dict) and e[2]['type'] == 'introduce' and server.open_introduces.__contains__(
                 e[2]['introduce_ID']):
+
+            logging.info(f'Log entry: {e}')
 
             client = client_dict[e[2]['source']]
 
             result = e[2]['result']
 
-            print('creating e2e feeds')
             create_E2E_feed(server, client)
 
             feed_entry = {
@@ -916,9 +1017,12 @@ def handle_approved_introduce(server: Server):
                 client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()
 
+        #read detruce result
         if isinstance(e[2], dict) and e[2]['type'] == 'detruce' and server.open_introduces.__contains__(
                 e[2]['introduce_ID']):
-            print(f'DTERUCE LOG:{e[2]}')
+            logging.debug(f'DETERUCE LOG:{e[2]}')
+            logging.info(f'Log entry: {e}')
+
 
             client = client_dict[e[2]['source']]
 
@@ -938,14 +1042,17 @@ def handle_approved_introduce(server: Server):
                          f'{feed_entry}')
             server.open_introduces.remove(e[2]['introduce_ID'])
             wr_feed(client.isp_client_feed, client.isp_client_key, feed_entry)
-            client.highest_request_ID=e[2]['request_ID']
+            client.highest_request_ID = e[2]['request_ID']
             if client.open_requests.__contains__(e[2]['request_ID']):
                 client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()
 
+        #read server request to detruce
         if isinstance(e[2], dict) and e[2]['type'] == 'server_detruce' and e[2][
             'introduce_ID'] + 1 > server.highest_introduce_ID:
-            print('reached server_detruce')
+            logging.info(f'Log entry: {e}')
+
+            logging.debug('reached server_detruce')
             key = e[2]['client']
             sub_client = sub_client_dict[key]
             delete_E2E_feed(key)
@@ -966,7 +1073,9 @@ def handle_approved_introduce(server: Server):
             wr_feed(client.isp_client_feed, client.isp_client_key, request)
             client.replicator.replicate()
 
+        #read a multiplexed log entry
         if isinstance(e[2], dict) and e[2]['type'] == 'mux' and e[2]['introduce_ID'] == server.highest_introduce_ID - 1:
+            logging.info(f'Log entry: {e}')
 
             result = e[2]['result']
 
@@ -977,7 +1086,7 @@ def handle_approved_introduce(server: Server):
                 demux_result[1] = pcap.base64ify(demux_result[1])
                 demux_result[2] = cbor2.loads(demux_result[2])
 
-            print(f'demux_res:{demux_result}')
+            logging.info(f'Demultiplexed log entry:{demux_result}')
 
             sub_client = sub_client_dict[demux_result[2]['destination']]
 
@@ -1052,7 +1161,7 @@ def on_modified(event):
         logging.debug(server.to_string())
         if f'{event.src_path}' == server.server_isp_feed:
             logging.info(f'Handling server incoming')
-            handle_approved_introduce(server)
+            server_incoming(server)
 
 
 def on_moved(event):
@@ -1145,7 +1254,7 @@ def handle_new_requests(client: Client):
             if request_ID > client.highest_request_ID:
                 print(f'went into IF')
                 read_request(e[2], client)
-                client.highest_request_ID += 1
+                #client.highest_request_ID += 1
             elif client.open_requests.__contains__(request_ID):
                 # client.open_requests.remove(request_ID)
                 # read_request(e[2], client)
@@ -1221,8 +1330,6 @@ if __name__ == '__main__':
         logging.info(cli.to_string())
     for ser in server_dict.values():
         logging.info(ser.to_string())
-    for ser in server_dict.keys():
-        print(f'key={ser}')
     for sub in sub_client_dict.values():
         logging.info(sub.to_string())
     start_watchdog()
@@ -1248,12 +1355,4 @@ if __name__ == '__main__':
         logging.info('')
         pcap.dump(server.server_isp_feed)
 
-    with open('client_dump.json', 'w') as fp:
-        dump = dict
-        for client in client_dict.values():
-            json.dump(client.encode(), fp)
-
     # request = handle_input(input())
-
-# TODO: Refactor
-# TODO: Logging
