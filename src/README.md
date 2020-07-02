@@ -145,3 +145,8 @@ Now either read the server request in the client console by typing *read* into i
  detect the detruce and inform:
  
     06/17/2020 03:16:26 PM Server:ser001 detruced from you! You can no longer communicate with it. Try introducing!
+
+## Disclaimer
+If the implementation is not exactly used as described above, it can result in a dead end or crash. This is a prototype
+implementation to explore the mechanics of a Feed Bundle Protocol. Theoretically this implementation supports multi client and
+server support. Hence some major errors may occure.
