@@ -18,12 +18,12 @@ Installing all packages:
 Until today the implementation supports one predefined client, ISP and server for the given situation. All configurations are stored in the corresponding config files. 
 Make sure the feeds folder is **empty**! To start each node invoke as followed
     
-    python3 nisp.py isp001-config.json
+    python3 nisp.py contracts/isp001-config.json
     
 For now it is important to run the ISP code first, since it generates also the folders for "all" clients and servers. Afterwards start client and server as followed:
 
-    python3 nclient.py cli001-config.json
-    python3 nserver.py ser001-config.json
+    python3 nclient.py contracts/cli001-config.json
+    python3 nserver.py contracts/ser001-config.json
     
 If all consoles show the text "Node is setup" you are ready to go!
 
@@ -78,9 +78,12 @@ So to introduce a client to a server procede as followed:
     --introduce -isp001 ['ser001']
     service=introduce destination=isp001 attributes=['ser001']
 
-In the server console you can now either accept or decline the introducing client. Due to still unsolved multithreading issues,
+*In the server console you can now either accept or decline the introducing client. Due to still unsolved multithreading issues,
 the first accept will cause the server to refuse the input and it will say, that the input does not match the given regex pattern. 
-Just type accept once more and the server will accept the client. This is also the case for declining a client.
+Just type accept once more and the server will accept the client. This is also the case for declining a client.* - this was 
+originally a feature, but caused too much problems with the multi client, multi server approach and is not implemented at the point.
+
+A server will automatically accept each client it gets introduced, and responds with an approval.
 
 After that refresh the client as described above and the client will print something like this:
 
@@ -141,7 +144,7 @@ For this type as followed in the server console:
     --detruce -cli001
     
 cli001 is the key of the client. 
-Now either read the server request in the client console by typing *read* into it or try to send a new request, the cleint will
+Now either read the server request in the client console by typing *read* into it or try to send a new request, the client will
  detect the detruce and inform:
  
     06/17/2020 03:16:26 PM Server:ser001 detruced from you! You can no longer communicate with it. Try introducing!
@@ -149,4 +152,7 @@ Now either read the server request in the client console by typing *read* into i
 ## Disclaimer
 If the implementation is not exactly used as described above, it can result in a dead end or crash. This is a prototype
 implementation to explore the mechanics of a Feed Bundle Protocol. Theoretically this implementation supports multi client and
-server support. Hence some major errors may occure.
+server support (cli001 till cli005 and ser001 and ser002). Practically still some major errors may occur if used wrongly.
+To use the multi node approach, just open new terminals and start as described by 
+changing cli001 to cli002 untill cli005 and ser001 by ser002. Every client can introduce to every server.
+ 

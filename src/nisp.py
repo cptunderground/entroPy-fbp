@@ -778,6 +778,9 @@ def read_request(log_entry: dict, client: Client):
             try:
                 logging.debug(f'Evaluating service')
                 logging.debug(log_entry['service'])
+                '''
+                Here the best practice is shown, by just evaluating the service and passing the attributes.
+                '''
                 f = eval(f'services.Service.{log_entry["service"]}')
                 result = f(log_entry['attributes'])
                 send_result(log_entry, result, client)
@@ -841,12 +844,11 @@ def create_E2E_feed(server: Server, client: Client):
     rep = replicator.Replicator(f'{spk}_{cpk}.pcap', alias_s_c, isp_config[cpk]["c_location"])
 
     # very very dirty hack...
-    #while cpk in sub_client_dict.keys():
-     #   cpk = str(cpk) + str(cpk)
+    # while cpk in sub_client_dict.keys():
+    #   cpk = str(cpk) + str(cpk)
     identity = f'{cpk}_{spk}'
-    sub_client = Client(identity, alias_c_s, alias_s_c, None, client.highest_request_ID+1, [], rep)
+    sub_client = Client(identity, alias_c_s, alias_s_c, None, client.highest_request_ID + 1, [], rep)
     sub_client_dict[identity] = sub_client
-
 
     feed_entry = {
         'type': 'init',
@@ -869,7 +871,7 @@ def read_detruce(log_entry, client: Client):
     server = server_dict[log_entry['attributes']['server']]
     pk = log_entry['attributes']['public_key']
 
-    #deleting feeds and keys
+    # deleting feeds and keys
     delete_E2E_feed(f'{client.name}_{server.name}')
 
     # send_result(log_entry, client.name, client)
@@ -913,8 +915,7 @@ def read_introduce(log_entry, client: Client):
         invalid_server(log_entry, client)
         return
 
-
-    #while c_pk in sub_client_dict.keys():
+    # while c_pk in sub_client_dict.keys():
     #    c_pk = str(c_pk) + str(c_pk)
     # pass pk to server
     # pk = create_E2E_feed(server, client, c_pk)
@@ -937,7 +938,6 @@ def read_introduce(log_entry, client: Client):
         'service': 'introduce',
         'attributes': attributes
     }
-
 
     wr_feed(server.isp_server_feed, server.isp_server_key, request)
     server.open_introduces.append(server.highest_introduce_ID)
@@ -998,7 +998,7 @@ def server_incoming(server: Server):
             logging.debug(e[2])
             logging.debug(f'for mux introduce id:{e[2]["introduce_ID"]},{server.highest_introduce_ID}')
 
-        #read introduce result
+        # read introduce result
         if isinstance(e[2], dict) and e[2]['type'] == 'introduce' and server.open_introduces.__contains__(
                 e[2]['introduce_ID']):
 
@@ -1028,12 +1028,11 @@ def server_incoming(server: Server):
                 client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()
 
-        #read detruce result
+        # read detruce result
         if isinstance(e[2], dict) and e[2]['type'] == 'detruce' and server.open_introduces.__contains__(
                 e[2]['introduce_ID']):
             logging.debug(f'DETERUCE LOG:{e[2]}')
             logging.info(f'Log entry: {e}')
-
 
             client = client_dict[e[2]['source']]
 
@@ -1058,7 +1057,7 @@ def server_incoming(server: Server):
                 client.open_requests.remove(e[2]['request_ID'])
             client.replicator.replicate()
 
-        #read server request to detruce
+        # read server request to detruce
         if isinstance(e[2], dict) and e[2]['type'] == 'server_detruce' and e[2][
             'introduce_ID'] + 1 > server.highest_introduce_ID:
             logging.info(f'Log entry: {e}')
@@ -1069,8 +1068,8 @@ def server_incoming(server: Server):
             delete_E2E_feed(key)
 
             client = client_dict[str(key)[0:6]]
-            print(f'SUBCLID:{sub_client.highest_request_ID}')
-            print(f'CLID:{client.highest_request_ID}')
+            logging.debug(f'SUBCLID:{sub_client.highest_request_ID}')
+            logging.debug(f'CLID:{client.highest_request_ID}')
             ID = max(sub_client.highest_request_ID, client.highest_request_ID)
             client.highest_request_ID = ID + 1
             server.highest_introduce_ID += 1
@@ -1086,7 +1085,7 @@ def server_incoming(server: Server):
             wr_feed(client.isp_client_feed, client.isp_client_key, request)
             client.replicator.replicate()
 
-        #read a multiplexed log entry
+        # read a multiplexed log entry
         if isinstance(e[2], dict) and e[2]['type'] == 'mux' and e[2]['introduce_ID'] == server.highest_introduce_ID - 1:
             logging.info(f'Log entry: {e}')
 
@@ -1125,6 +1124,12 @@ def on_deleted(event):
 
 
 def on_modified(event):
+    '''
+    This is the key method of the file system polling mechanism.
+    When a file in the specified directory is changed, an event gets evaluated.
+    :param event: the file system event - containing the file which was changed
+    :return:
+    '''
     # on a feed change - incoming replication - watchdog detects it and invokes this function
     # it searches from which feed it came and procedes accordingly
     print('--------------------------------------')
@@ -1133,20 +1138,19 @@ def on_modified(event):
     global client_dict
 
     for client in client_dict.values():
-
+        # checks if the file corresponds to a client contract
         if f'{event.src_path}' == client.client_isp_feed:
             logging.info(f'Handling client incoming')
             handle_new_requests(client)
 
-
     for sub_client in sub_client_dict.values():
-
+        # checks if the file corresponds to a sub client contract
         if f'{event.src_path}' == sub_client.client_isp_feed:
             logging.info(f'Handling SUB client incoming')
             handle_new_sub_request(sub_client)
 
     for server in server_dict.values():
-
+        # checks if the file corresponds to a server contract
         logging.debug(server.to_string())
         if f'{event.src_path}' == server.server_isp_feed:
             logging.info(f'Handling server incoming')
@@ -1188,7 +1192,6 @@ def multiplex_request(w, sub_client: Client):
     server.replicator.replicate()
 
 
-
 def handle_new_sub_request(sub_client: Client):
     '''
     This method is invoked if an end-to-end feed is changed.
@@ -1217,11 +1220,17 @@ def handle_new_sub_request(sub_client: Client):
             logging.info(e)
 
             if request_ID > sub_client.highest_request_ID:
-
                 multiplex_request(w, sub_client)
 
 
 def handle_new_requests(client: Client):
+    '''
+    This is the read result and send request method combined for the client feed.
+    Since the server can also send requests to the client, the feeds cannot be treated as request and result feeds.
+    Needs to be overthought again.
+    :param client: Contract
+    :return:
+    '''
     p = pcap.PCAP(client.client_isp_feed)
     p.open('r')
     for w in p:
@@ -1259,7 +1268,7 @@ def handle_new_requests(client: Client):
             if request_ID > client.highest_request_ID:
 
                 read_request(e[2], client)
-                #client.highest_request_ID += 1
+                # client.highest_request_ID += 1
             elif client.open_requests.__contains__(request_ID):
                 # client.open_requests.remove(request_ID)
                 # read_request(e[2], client)
@@ -1268,6 +1277,10 @@ def handle_new_requests(client: Client):
 
 
 def start_watchdog():
+    '''
+    Starts the thread for watchdog and reacts accordingly for any feed changes
+    :return:
+    '''
     import time
     from watchdog.observers import Observer
     from watchdog.events import PatternMatchingEventHandler
@@ -1308,6 +1321,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
+    # setting up environment
     client_dict = dict()
     sub_client_dict = dict()
     server_dict = dict()

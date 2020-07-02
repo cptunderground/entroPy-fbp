@@ -11,7 +11,6 @@ import time
 
 import cbor2
 
-import fbp
 import lib.feed as feed
 import lib.pcap as pcap
 import lib.crypto as crypto
