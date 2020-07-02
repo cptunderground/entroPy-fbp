@@ -358,7 +358,7 @@ def init_clients():
     global client_dict
     global client_names
 
-    print('init_clients')
+    logging.info('init_clients')
 
     path = isp_config['location']
     for log in os.listdir(path):
@@ -385,9 +385,9 @@ def init_clients():
                                           sub_client['isp_client_feed'], sub_client['isp_client_key'], -1,
                                           [], creplicator)
                         sub_client_dict[sub_client['name']] = s_client
-                        print(f'SUBCLIENT:{s_client.to_string()}')
+                        logging.info(f'SUBCLIENT:{s_client.to_string()}')
                     except:
-                        print('No sub client found')
+                        logging.info('No sub client found')
             p.close()
 
     for name in isp_config['client_keys']:
@@ -794,7 +794,7 @@ def delete_E2E_feed(pk):
     logging.info(f'Deleting {pk} from sub_client_dict:{sub_client_dict}')
     try:
         sub_client = sub_client_dict[pk]
-        print(sub_client.to_string())
+
         try:
             os.remove(sub_client.client_isp_feed)
         except:
@@ -844,9 +844,9 @@ def create_E2E_feed(server: Server, client: Client):
     #while cpk in sub_client_dict.keys():
      #   cpk = str(cpk) + str(cpk)
     identity = f'{cpk}_{spk}'
-    sub_client = Client(identity, alias_c_s, alias_s_c, None, -1, [], rep)
+    sub_client = Client(identity, alias_c_s, alias_s_c, None, client.highest_request_ID+1, [], rep)
     sub_client_dict[identity] = sub_client
-    print(f'sub_client_dict:{sub_client_dict}')
+
 
     feed_entry = {
         'type': 'init',
@@ -1069,12 +1069,14 @@ def server_incoming(server: Server):
             delete_E2E_feed(key)
 
             client = client_dict[str(key)[0:6]]
+            print(f'SUBCLID:{sub_client.highest_request_ID}')
+            print(f'CLID:{client.highest_request_ID}')
             ID = max(sub_client.highest_request_ID, client.highest_request_ID)
             client.highest_request_ID = ID + 1
             server.highest_introduce_ID += 1
 
             request = {
-                'ID': client.highest_request_ID+1,
+                'ID': client.highest_request_ID,
                 'introduce_ID': e[2]['introduce_ID'],
                 'type': 'request',
                 'service': 'detruce',
@@ -1253,9 +1255,9 @@ def handle_new_requests(client: Client):
 
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
-            print(f'detected:{request_ID}, highest:{client.highest_request_ID}')
+
             if request_ID > client.highest_request_ID:
-                print(f'went into IF')
+
                 read_request(e[2], client)
                 #client.highest_request_ID += 1
             elif client.open_requests.__contains__(request_ID):

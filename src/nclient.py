@@ -132,6 +132,7 @@ def refresh():
     global c_server_dict
 
     logging.info(f'Waiting for:{result_ID_list}')
+    logging.info(f'Next ID:{next_request_ID}')
 
     handle_new_results()
 
@@ -323,7 +324,7 @@ def create_E2E_feed(spk):
 
     # saving contract
     rep = replicator.Replicator(f'{cpk}_{spk}.pcap', alias_c_s, i_location)
-    cserver = cServer(spk, alias_s_c, alias_c_s, key_c_s, 0, [], rep)
+    cserver = cServer(spk, alias_s_c, alias_c_s, key_c_s, next_request_ID-1, [], rep)
     c_server_dict[spk] = cserver
     logging.debug(c_server_dict[spk].to_string())
 

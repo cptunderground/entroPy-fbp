@@ -119,7 +119,7 @@ def init():
 
     elif not os.path.exists(f'{server_config["location"]}/{server_config["alias"]}.pcap') and os.path.exists(
             f'{server_config["location"]}/{server_config["key"]}'):
-        print("key exists feed not")
+        logging.info("key exists feed not")
         fid, signer = feed.load_keyfile(f'{server_config["location"]}/{server_config["key"]}')
         client_feed = feed.FEED(f'{server_config["location"]}/{server_config["alias"]}.pcap', fid, signer, True)
 
@@ -127,7 +127,7 @@ def init():
         server_key = f'{server_config["location"]}/{server_config["key"]}'
 
         pk = feed.get_public_key(server_key)
-        print(pk)
+
         # TODO exchange sourece and dest with public keys
         feed_entry = {
             'type': 'initiation',
@@ -202,11 +202,10 @@ def init():
         # print(f"   content={e[2]}")
 
         if isinstance(e[2], dict) and (e[2]['type'] == 'introduce' or e[2]['type'] =='request'):
-            print(e[2])
+            logging.info(e[2])
             logging.debug(f'from init request  ID={e[2]["introduce_ID"]}')
 
             highest_introduce_ID = max(int(e[2]["introduce_ID"]), highest_introduce_ID)
-            print(highest_introduce_ID)
     p.close()
 
     p = pcap.PCAP(server_log)
@@ -237,11 +236,11 @@ def init():
 
     # TODO init sub clients
     path = server_config['location']
-    print(path)
+
     for log in os.listdir(path):
-        print(os.path.isfile(os.path.join(path, log)))
+
         if os.path.isfile(os.path.join(path, log)) and log.endswith(".pcap"):
-            print(log)
+
             p = pcap.PCAP(f'{path}/{log}')
             p.open('r')
             for w in p:
@@ -257,19 +256,19 @@ def init():
                     e[2] = cbor2.loads(e[2])
 
                 if isinstance(e[2], dict) and e[2]['type'] == 'init':
-                    print(e[2])
+
                     try:
                         client = e[2]['client']
                         sclient = sClient(client['name'], client['c_s_feed'], client['c_s_key'], client['s_c_feed'],
                                           client['s_c_key'], 0,
                                           [])
                         s_client_dict[client['name']] = sclient
-                        print(sclient)
+                        logging.info(sclient)
                     except:
                         pass
             p.close()
 
-    print(s_client_dict)
+
     for c in s_client_dict.values():
         client_log = c.E2E_c_s_log
         p = pcap.PCAP(client_log)
@@ -427,16 +426,13 @@ def handle_introduction():
             e[2] = cbor2.loads(e[2])
 
         if isinstance(e[2], dict) and e[2]['type'] == 'introduce':
-            print(f'in introduce')
 
-            print(f'detected introduce id:{e[2]["introduce_ID"]}')
-            print(f'highest_introduce_ID:{highest_introduce_ID}')
             if e[2]['introduce_ID'] > highest_introduce_ID:
                 attributes = e[2]['attributes']
                 # create both feeds and return information from both feeds for client
                 # wait for input of server, either accept or decline
                 print('accept/decline new client:')
-                answer = 'accept' #input()
+                answer = 'accept' # input()
                 if answer == 'accept':
                     result = create_e2e_feed(attributes)
                     send_result(e[2], result)
@@ -448,9 +444,9 @@ def handle_introduction():
             logging.debug(f"   content={e[2]}")
 
             if e[2]['introduce_ID'] > highest_introduce_ID:
-                print(f'logentry:{e[2]}')
+
                 attributes = e[2]['attributes']
-                print(f'attributes:{attributes}')
+
                 delete_e2e_feed(attributes)
                 send_result(e[2], 'approved')
 
@@ -514,7 +510,7 @@ def delete_e2e_feed(attributes):
 def create_e2e_feed(attributes):
     global s_client_dict
     global server_config
-    print(attributes)
+    logging.debug(attributes)
     server_name = attributes['server']
     client_name = attributes['client']
     cpk = attributes['public_key']
@@ -597,7 +593,7 @@ def create_e2e_feed(attributes):
     E2E_server_feed.write(s_c_feed_entry)
 
 
-    print(f'Clinet Dict: {s_client_dict}')
+    logging.info(f'Clinet Dict: {s_client_dict}')
 
     ret = server_config['name']
 
@@ -614,16 +610,17 @@ def on_deleted(event):
 
 def on_modified(event):
     global s_client_dict
-    print(f'Modified Path: {event.src_path}')
+    print('-----------------------------------------')
+    logging.info(f'Modified Path: {event.src_path}')
     logging.debug(f"Modified: {event.src_path}")
     if f'{event.src_path}' == isp_log:
-        print(f'in if')
+
         handle_introduction()
     else:
         try:
             c = s_client_dict[f'{event.src_path[2:]}']
             read_c_request(c)
-            logging.info('works')
+
         except:
             logging.warning(f'{event.src_path[2:]}')
 
@@ -662,7 +659,7 @@ def read_c_request(client: sClient):
 
 def handle_request(log_entry, client: sClient):
     # TODO implement services
-    print('Handling client request')
+    logging.info('Handling client request')
     result = 'got it'
     w = log_entry['request']
     e = cbor2.loads(w)
@@ -689,7 +686,7 @@ def handle_request(log_entry, client: sClient):
     }
 
 
-    print(result_entry)
+    logging.info(result_entry)
 
     mux_w = wr_s_c_feed(client, result_entry)
 
@@ -700,14 +697,14 @@ def handle_request(log_entry, client: sClient):
         mux_w_loaded[1] = pcap.base64ify(mux_w_loaded[1])
         mux_w_loaded[2] = cbor2.loads(mux_w_loaded[2])
 
-    print(f'S_C_FEED_ENTRY:{mux_w_loaded}')
+    logging.info(f'S_C_FEED_ENTRY:{mux_w_loaded}')
     mux_result = {
         'introduce_ID': log_entry['introduce_ID'],
         'type': 'mux',
         'result': mux_w
     }
 
-    print(f'Muxed result:{mux_result}')
+    logging.info(f'Muxed result:{mux_result}')
     wr_feed(server_log, server_key, mux_result)
 
     r=replicator.Replicator(f'{server_config["alias"]}.pcap', server_log, server_config['isp_location'])
@@ -789,18 +786,18 @@ def read_config(fn):
 
 
 def extract_client(data):
-    print('extracting client')
+    logging.info('extracting client')
     try:
-        print(s_client_dict)
+        logging.info(s_client_dict)
         client = s_client_dict[f'{data}_{server_config["name"]}']
         return client
     except Exception as e:
-        print(e)
+        logging.info(e)
         return -1
 
 def detruce_client(client: sClient):
     global highest_introduce_ID
-    print('detrucing client')
+    logging.info('Detrucing client')
 
     attributes = {
         'public_key' : str(client.name)[0:6]
@@ -845,7 +842,7 @@ if __name__ == '__main__':
     server_config = read_config(args.config)
 
     isp_log = f'{server_config["location"]}/{server_config["isp"]}.pcap'
-    print(isp_log)
+
     init()
 
     for c in s_client_dict.values():
@@ -857,7 +854,7 @@ if __name__ == '__main__':
     def get_input():
         while True:
             data = input()  # Something akin to this
-            print(f'input::{data}')
+            logging.info(f'input:{data}')
             detruce_pattern = r'^--([a-zA-Z0-9 ]+) -([a-zA-Z0-9 ]+)'
             matching_detruce = re.match(detruce_pattern, data)
 
@@ -870,7 +867,7 @@ if __name__ == '__main__':
                     else:
                         pass
             else:
-                print(f'not matching pattern: invoke with --service -destination')
+                logging.info(f'not matching pattern: invoke with --service -destination')
 
 
     input_thread = threading.Thread(target=get_input)
