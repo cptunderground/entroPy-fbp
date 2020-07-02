@@ -1,0 +1,1 @@
+# This folder needs to be empty at start of the FBP

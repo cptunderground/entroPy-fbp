@@ -160,6 +160,7 @@ def dump(fname):
         seq = e[0][1]
         if e[2] != None:
             e[2] = cbor2.loads(e[2])
+        print(f'log entry: {e}')
         print(f"** fid={fid}, seq={seq}, ${len(w)} bytes")
         print(f"   hashref={href.hex()}")
         print(f"   content={e[2]}")

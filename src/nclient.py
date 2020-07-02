@@ -29,6 +29,11 @@ delimitor = '---------------------------------------------'
 
 
 class cServer():
+    '''
+    This class holds all information about a connected server, the whole contract consisting of keys and feed-pair as
+    well as information where the replication goes.
+    '''
+
     def __init__(self, name: str, s_c_feed: str, c_s_feed: str, c_s_key: str,
                  highest_introduce_ID: int,
                  open_introduces: list, replicator: replicator.Replicator):
@@ -61,6 +66,11 @@ class cServer():
 
 
 def handle_input(msg):
+    '''
+    handles the user input and forms it to a format, the send_request() method can read
+    :param msg: user input in format '--service -destination [attributes]
+    :return: a dict of these keys
+    '''
     if not isinstance(msg, str):
         msg = str(msg.decode('utf8'))
     logging.debug(f'msg: {msg}')
@@ -68,7 +78,6 @@ def handle_input(msg):
     matching_full = re.match(full_pattern, msg)
     matching_short = re.match(short_pattern, msg)
 
-    # TODO eval attributes to python structure
     if matching_full:
         service = matching_full.group(1)
         destination = matching_full.group(2)
@@ -103,6 +112,7 @@ def handle_input(msg):
 
         return request
     else:
+        # other input than in the request format is evaluated here
         if msg.lower() == 'refresh':
             logging.info('Refreshing')
             refresh()
@@ -115,9 +125,13 @@ def handle_input(msg):
 
 
 def refresh():
+    '''
+    refreshes the client - cycles through the feed and detects new results
+    :return: None
+    '''
     global c_server_dict
 
-    print(f'Waiting for:{result_ID_list}')
+    logging.info(f'Waiting for:{result_ID_list}')
 
     handle_new_results()
 
@@ -127,6 +141,11 @@ def refresh():
 
 
 def send_request(request: dict):
+    '''
+    This method 'sends' a request to the given destination. Actually writes request in the feed it belongs in.
+    :param request: dict in format {'service': str , 'destination' : str, 'attributs': Any}
+    :return:
+    '''
     global next_request_ID
     global client_log
     global client_key
@@ -134,10 +153,7 @@ def send_request(request: dict):
     global c_server_dict
 
     if request['service'] == 'introduce':
-        #if not request['attributes'] in c_server_dict.keys():
-            # register only public key and send this to server
-
-            # public_key = create_E2E_feed(request['attributes'])
+        # the introduce-service needs another format than the normal request
 
         public_key = client_config['name']
 
@@ -155,12 +171,12 @@ def send_request(request: dict):
             'service': request['service'],
             'attributes': attributes
         }
-    #else:
+    # else:
     #    logging.warning(f'Feed for {request["attributes"]} already exists')
-        #return
+    # return
 
     elif request['service'] == 'detruce':
-        print(request['attributes'])
+        # same as introduce-service
         if request['attributes'] in c_server_dict.keys():
 
             delete_E2E_feed(request['attributes'])
@@ -192,12 +208,13 @@ def send_request(request: dict):
             'attributes': request['attributes']
         }
 
+    # checks if destination is ISP
     if str(request['destination']).lower() == client_config['ipk']:
         wr_feed(client_log, client_key, feed_entry)
         await_result(feed_entry['ID'])
         next_request_ID += 1
     else:
-        # TODO optimize
+        #checks if destination is a known server, else log that the request could not have been made
         if len(c_server_dict) != 0:
             for server in c_server_dict.values():
                 if str(request['destination']).lower() == server.name:
@@ -211,19 +228,36 @@ def send_request(request: dict):
 
 
 def wr_feed(f, key, msg):
+    '''
+    writes msg in the feed f and signs with key
+    :param f: feed
+    :param key: key
+    :param msg: Any content
+    '''
     logging.info(f'Writing in {f}: {msg}')
     feed.append_feed(f, key, msg)
+
     replicator.replicate(f'{client_config["location"]}/{client_config["alias"]}.pcap',
                          f'{client_config["isp_location"]}/{client_config["alias"]}.pcap')
 
 
 def wr_server_feed(msg, server: cServer):
+    '''
+    writes msg in the feed f and signs with key
+    :param f: feed
+    :param key: key
+    :param msg: Any content
+    '''
     logging.info(f'Writing in {server.c_s_feed}: {msg}')
     feed.append_feed(server.c_s_feed, server.c_s_key, msg)
     server.replicator.replicate()
 
 
 def delete_E2E_feed(spk):
+    '''
+    after a detruce request deletes the corresponding connection
+    :param spk: server public key
+    '''
     global c_server_dict
     server = c_server_dict[spk]
 
@@ -231,15 +265,20 @@ def delete_E2E_feed(spk):
     os.remove(server.c_s_key)
     os.remove(server.s_c_feed)
     c_server_dict.pop(spk)
-    print(c_server_dict)
+    logging.info(f'Connected Servers:{c_server_dict}')
 
 
 def create_E2E_feed(spk):
+    '''
+    After an approved introduce-request creates the feed pair for the newly established contract
+    :param spk: server public key
+    '''
     global c_server_dict
     cpk = client_config["name"]
     c_location = client_config["location"]
     i_location = client_config["isp_location"]
 
+    # key file generation
     key_pair = crypto.ED25519()
     key_pair.create()
     header = ("# new ED25519 key pair: ALWAYS keep the private key as a secret\n")
@@ -248,6 +287,7 @@ def create_E2E_feed(spk):
     logging.info("# new ED25519 key pair: ALWAYS keep the private key as a secret")
     logging.info('{\n  ' + (',\n '.join(key_pair.as_string().split(','))[1:-1]) + '\n}')
 
+    # directory generation
     if not os.path.exists(f'{c_location}'):
         os.mkdir(f'{c_location}')
     f = open(f'{c_location}/{cpk}_{spk}.key', 'w')
@@ -255,6 +295,7 @@ def create_E2E_feed(spk):
     f.write(keys)
     f.close()
 
+    # feed generation
     try:
         os.remove(f'{c_location}/{cpk}_{spk}.pcap')
     except:
@@ -266,13 +307,14 @@ def create_E2E_feed(spk):
     alias_c_s = f'{c_location}/{cpk}_{spk}.pcap'
     alias_s_c = f'{c_location}/{spk}_{cpk}.pcap'
     key_c_s = f'{c_location}/{cpk}_{spk}.key'
-    # TODO exchange sourece and dest with public keys
 
+    # saving contract
     rep = replicator.Replicator(f'{cpk}_{spk}.pcap', alias_c_s, i_location)
     cserver = cServer(spk, alias_s_c, alias_c_s, key_c_s, 0, [], rep)
     c_server_dict[spk] = cserver
-    print(c_server_dict[spk].to_string())
+    logging.debug(c_server_dict[spk].to_string())
 
+    # write contract in first log entry
     feed_entry = {
         'type': 'init',
         'key': feed.get_public_key(key_c_s),
@@ -286,20 +328,26 @@ def create_E2E_feed(spk):
 
 
 def create_feed():
+    '''
+    This method is used to create the feeds out of the ISP-Client contract.
+    :return:
+    '''
     global client_log
     global client_key
     global next_request_ID
     global client_config
 
+    # if the feeds exist
     if os.path.exists(f'{client_config["location"]}/{client_config["alias"]}.pcap') and os.path.exists(
             f'{client_config["location"]}/{client_config["key"]}'):
         logging.info(f'Feed and key exist')
         client_key = f'{client_config["location"]}/{client_config["key"]}'
         client_log = f'{client_config["location"]}/{client_config["alias"]}.pcap'
 
+    # if only the key file exists
     elif not os.path.exists(f'{client_config["location"]}/{client_config["alias"]}.pcap') and os.path.exists(
             f'{client_config["location"]}/{client_config["key"]}'):
-        print("key exists feed not")
+        logging.debug("key exists feed not")
         fid, signer = feed.load_keyfile(f'{client_config["location"]}/{client_config["key"]}')
         client_feed = feed.FEED(f'{client_config["location"]}/{client_config["alias"]}.pcap', fid, signer, True)
 
@@ -307,8 +355,8 @@ def create_feed():
         client_key = f'{client_config["location"]}/{client_config["key"]}'
 
         pk = feed.get_public_key(client_key)
-        print(pk)
-        # TODO exchange sourece and dest with public keys
+        logging.debug(pk)
+
         feed_entry = {
             'type': 'initiation',
             'alias': client_config['alias'],
@@ -318,6 +366,8 @@ def create_feed():
 
         logging.info(f'writing in {client_log}: {feed_entry}')
         client_feed.write(feed_entry)
+
+    # if nothing exists
     else:
         key_pair = crypto.ED25519()
         key_pair.create()
@@ -346,7 +396,7 @@ def create_feed():
         client_key = f'{client_config["location"]}/{client_config["key"]}'
 
         pk = feed.get_public_key(f'{client_config["location"]}/{client_config["key"]}')
-        # TODO exchange sourece and dest with public keys
+
         feed_entry = {
             'type': 'initiation',
             'alias': client_config['alias'],
@@ -359,12 +409,17 @@ def create_feed():
 
 
 def init():
+    '''
+    Initialises the whole client environment
+    :return:
+    '''
     global next_request_ID
     global highest_result_ID
     global result_ID_list
 
     create_feed()
 
+    # This part is currently not working
     logging.info('Initialising from feeds...')
     p = pcap.PCAP(client_log)
     p.open('r')
@@ -416,11 +471,11 @@ def init():
     p.close()
 
     path = client_config['location']
-    print(path)
+
     for log in os.listdir(path):
-        print(os.path.isfile(os.path.join(path, log)))
+
         if os.path.isfile(os.path.join(path, log)) and log.endswith(".pcap"):
-            print(log)
+
             p = pcap.PCAP(f'{path}/{log}')
             p.open('r')
             for w in p:
@@ -436,7 +491,7 @@ def init():
                     e[2] = cbor2.loads(e[2])
 
                 if isinstance(e[2], dict) and e[2]['type'] == 'init':
-                    print(e[2])
+
                     try:
                         server = e[2]['cserver']
                         rep = e[2]['cserver']['replicator']
@@ -444,11 +499,11 @@ def init():
                         cserver = cServer(server['name'], server['s_c_feed'], server['c_s_feed'], server['c_s_key'], 0,
                                           [], creplicator)
                         c_server_dict[server['name']] = cserver
-                        print(server)
+
                     except:
                         pass
             p.close()
-    print(c_server_dict)
+    logging.info(f'Servers:{c_server_dict}')
 
     for s in c_server_dict.values():
         p = pcap.PCAP(s.c_s_feed)
@@ -477,11 +532,21 @@ def init():
 
 
 def await_result(ID):
+    '''
+    puts an unresolved request ID in the waiting list
+    :param ID: request ID
+    :return:
+    '''
     global result_ID_list
     result_ID_list.append(ID)
 
 
 def clear_await(ID):
+    '''
+    removes after a result for the request has been found the request ID
+    :param ID: request ID
+    :return:
+    '''
     global result_ID_list
     result_ID_list.remove(ID)
 
@@ -524,6 +589,11 @@ def read_c_result(ID, server: cServer):
 
 
 def read_result(ID):
+    '''
+    reads the result of with given ID
+    :param ID: request ID
+    :return:
+    '''
     global result_ID_list
 
     p = pcap.PCAP(isp_log)
@@ -559,6 +629,11 @@ def read_result(ID):
 
 
 def handle_result(e):
+    '''
+    Prints the result log entry in the users console
+    :param e: log entry
+    :return:
+    '''
     if e[2]['service'] == 'introduce':
         logging.info(f'INTRODUCE')
         logging.info(f'-> {e}')
@@ -572,13 +647,17 @@ def handle_result(e):
 
 
 def handle_new_results():
-    logging.info('Handle new results')
+    logging.info(f'Handle new results')
     global result_ID_list
     for result_ID in result_ID_list:
         read_result(result_ID)
 
 
 def read_request():
+    '''
+    Since the server can also detruce - close a connection the client has to read requests
+    :return:
+    '''
     global next_request_ID
     p = pcap.PCAP(isp_log)
     p.open('r')
@@ -597,9 +676,9 @@ def read_request():
         if isinstance(e[2], dict) and e[2]['type'] == 'request':
             request_ID = e[2]["ID"]
 
-            print(f'req_id:{request_ID},next:{next_request_ID}')
+            logging.debug(f'req_id:{request_ID},next:{next_request_ID}')
             if request_ID == next_request_ID:
-                print(f'handling request from server')
+                logging.info(f'Handling request from server')
                 next_request_ID += 1
                 handle_request(e[2])
 
@@ -607,6 +686,11 @@ def read_request():
 
 
 def handle_request(log_entry):
+    '''
+    This method handles a request and answers it
+    :param log_entry: request
+    :return:
+    '''
     if log_entry['service'] == 'detruce':
         delete_E2E_feed(log_entry['attributes'])
         result = 'done'
@@ -642,15 +726,21 @@ def on_deleted(event):
 
 
 def on_modified(event):
+    '''
+    This method belongs to Watchdog, it tracks changes on the specific directory given in advance
+    :param event: the changing event
+    :return:
+    '''
     global c_server_dict
     logging.info(f"Modified: {event.src_path}")
 
     # if f'{event.src_path[2:]}' == isp_log:
 
+    # if the change was on the ISP feed
     if f'{event.src_path[2:]}' == f'{client_config["location"]}/{client_config["isp"]}.pcap':
         handle_new_results()
+    # if the change was in a other feed
     else:
-
         for s in c_server_dict.values():
             if s.s_c_feed == f'{event.src_path}':
                 handle_new_s_results(s)
@@ -663,6 +753,11 @@ def on_moved(event):
 
 
 def start_watchdog(method_to_call):
+    '''
+    Starts the watchdog thread, defines its behaviour
+    :param method_to_call: the method that repeatedly is called
+    :return:
+    '''
     import time
     from watchdog.observers import Observer
     from watchdog.events import PatternMatchingEventHandler
@@ -672,11 +767,13 @@ def start_watchdog(method_to_call):
     case_sensitive = True
     my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
 
+    # events watchdog detects
     my_event_handler.on_created = on_created
     my_event_handler.on_deleted = on_deleted
     my_event_handler.on_modified = on_modified
     my_event_handler.on_moved = on_moved
 
+    # location which is watched
     path = client_config['location']
     go_recursively = True
     my_observer = Observer()
@@ -694,6 +791,11 @@ def start_watchdog(method_to_call):
 
 
 def read_config(fn):
+    '''
+    The given config for the client. Written in JSON - is the contract given by the ISP
+    :param fn: json file
+    :return: the entire built contract between isp and client
+    '''
     basic_config = json.loads(open(fn).read())
     try:
         client_public_key = basic_config['cpk']
@@ -726,20 +828,17 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
+    # initialise global info
     next_request_ID = 0
     highest_result_ID = 0
     result_ID_list = []
     client_log = 'unknown'
     client_key = 'unknown'
-
-    #
-
     c_server_dict = dict()
-
     client_config = read_config(args.config)
-
     isp_log = f'{client_config["location"]}/{client_config["isp"]}.pcap'
     init()
+
 
     logging.info("Type Request {--service -destination [attributes]}")
 
@@ -749,6 +848,10 @@ if __name__ == '__main__':
     # request = handle_input(input())
 
     def r():
+        '''
+        the input reading function for the users input to interact with the system
+        :return:
+        '''
         inp = input()
         request = handle_input(inp)
         if request != None:
@@ -757,10 +860,15 @@ if __name__ == '__main__':
         else:
             print('')
 
+
     def testing():
+        '''
+        testing function
+        :return:
+        '''
         logging.info('STARTING TESTING')
-        delay = round(random.uniform(1.0,4.0),1)
-        iterations = 300 #random.randint(5,20)
+        delay = round(random.uniform(1.0, 4.0), 1)
+        iterations = 50  # random.randint(5,20)
         time.sleep(delay)
 
         input = '--introduce -isp001 [\'ser001\']'
@@ -785,7 +893,7 @@ if __name__ == '__main__':
 
         for i in range(iterations):
 
-            delay = 0.1 #round(random.uniform(1.0, 2.0), 1)
+            delay = 0.1  # round(random.uniform(1.0, 2.0), 1)
             input = '--echo -ser001 [\'testecho\']'
             logging.info(f'Input:{input}, delay:{delay}')
             request = handle_input(input)
@@ -851,6 +959,7 @@ if __name__ == '__main__':
         time.sleep(delay)
 
 
+    #starts watchdog with the to be called method
     start_watchdog(r)
 
     logging.info('dumping feed...')
