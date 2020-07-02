@@ -409,6 +409,9 @@ INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Code/re
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_rpc.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_rpc.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_rpc.png
+INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/simple_mux.png
+INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/simple_mux.png
+INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/simple_mux.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_mux.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_mux.png
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Figures/full_mux.png
@@ -449,6 +452,7 @@ INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Thesis.
 INPUT /home/lazerletten/Desktop/BSc/entroPy-fbp/doc/basilea-latex-master/Thesis.out
 INPUT /usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
+INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb

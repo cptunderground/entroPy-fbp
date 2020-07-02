@@ -35,7 +35,7 @@ The replication mechanism is invoked after each write operation to a feed. Gener
 \section{RPC}
 Having the contract and replicated feeds, the type of RPC-protocol has its turn. To communicate between two participants, four general methods are needed as listed below. By having a simple serialisable data structure for requests and results, it is easy to incorporate them into the feeds. Requests call services, which use the given attributes and produce a result, as advanced in the original RPC-protocol by \citet{birrell1984implementing}.
 \section{Data Structure}
-A suitable data structure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure, an \lstinline{ID} must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
+A suitable data structure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure, an ID must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
 
 
     \begin{python}
@@ -62,7 +62,7 @@ Services are the procedures called by the caller and executed by the callee. In 
 \section{API}
 As a disclaimer, these API methods correspond only to the logical aspect of the pseudo code. There are many ways to implement them in differing software-architecturial styles, the implementation only shows what is minimally needed and executed.
 \subsection{Send Request}
-The send\_request method needs to have knowledge of the servie to be invoke and its attributes, as well as a destination. As described above, it is not a "sending" in the old-fashioned way, the destination corresponds to the Caller-Callee feed where the caller is the source and the Callee is the destination. Given these parameters, a request can be formed and written to the destination feed, whereby the feed must be replicated afterwards.
+The \lstinline{send_request()} method needs to have knowledge of the servie to be invoke and its attributes, as well as a destination. As described above, it is not a "sending" in the old-fashioned way, the destination corresponds to the Caller-Callee feed where the caller is the source and the Callee is the destination. Given these parameters, a request can be formed and written to the destination feed, whereby the feed must be replicated afterwards.
 \begin{python}
     \lstinputlisting[]{Code/send_request.py}
     
@@ -70,7 +70,7 @@ The send\_request method needs to have knowledge of the servie to be invoke and 
 
  
 \subsection{Read Request}
-This method needs to follow on a detected feed change. This can be realised either by a global polling mechanism, which invokes the read\_request method, or directly in the method by listening to a feed. It takes the request, extracts its contents and invokes the specified service and waits for its result. Afterwards, it either returns the result or passes it directly to the send\_result method.
+This method needs to follow on a detected feed change. This can be realised either by a global polling mechanism, which invokes the \lstinline{read_request()} method, or directly in the method by listening to a feed. It takes the request, extracts its contents and invokes the specified service and waits for its result. Afterwards, it either returns the result or passes it directly to the \lstinline{send_result()} method. 
 \begin{python}
     \lstinputlisting[]{Code/read_request.py}
     
@@ -78,14 +78,14 @@ This method needs to follow on a detected feed change. This can be realised eith
 
 
 \subsection{Send Result}
-This method is very similar to the send\_request method. It uses the previously executed request to gain information about the ID, forms the result and writes it to the Callee-Caller feed.
+This method is very similar to the \lstinline{send_request()} method. It uses the previously executed request to gain information about the ID, forms the result and writes it to the Callee-Caller feed.
 \begin{python}
 \lstinputlisting[]{Code/send_result.py}
     
 \end{python}
 
 \subsection{Read Result}
-This method also to follows on a detected feed change, takes the result and closes the request. Due to the fact that quite some time has elapsed since the send\_request method, there is also a threading issue. Whether the send\_request method is blocking or not depends on the overlay of the FBP and cannot be decided in general, although it is blocking in the implementation of \citet{birrell1984implementing}. Therefore, it needs to be taken into account, but not considered at this API level.
+This method also to follows on a detected feed change, takes the result and closes the request. Due to the fact that quite some time has elapsed since the \lstinline{send_request()} method, there is also a threading issue. Whether the \lstinline{send_request()} method is blocking or not depends on the overlay of the FBP and cannot be decided in general, although it is blocking in the implementation of \citet{birrell1984implementing}. Therefore, it needs to be taken into account, but not considered at this API level.
 \begin{python}
 \lstinputlisting[]{Code/read_result.py}
     
@@ -156,8 +156,8 @@ In order to achieve this, a new type is accepted and a new field is added in the
 \begin{lstlisting}
 mux_request = {'ID':1, 'type':'mux', 
                'meta':{'feed_ID':'cli001_ser001'},
-               'request':{'ID':1, 'type':'request', 'service':'echo', 
-                          'attributes':'hello server'}
+               'client_request':{'ID':1, 'type':'request', 'service':'echo', 
+                                 'attributes':'hello server'}
               }
 \end{lstlisting}
 \end{python}
@@ -169,16 +169,23 @@ feed:\\
 \begin{lstlisting}
 mux_result = {'ID':1, 'type':'mux', 
               'meta':{'feed_ID':'ser001_cli001'},
-              'result':{'ID':1, 'type':'result', 'result':'hello server'}
+              'client_result':{'ID':1, 'type':'result', 'result':'hello server'}
              }
 \end{lstlisting}
 \end{python}
 
-Again, the meta data describes how to handle this specific mux-result in the ISP. If we approach the problem like this, one particular inconsistency occurs. When writing in feeds with this approach, the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request, and then rewriting it, the whole log entry is put as the value of the key request or result and at demultiplexing stage appended bytewise to the corresponding feed.
+Again, the meta data describes how to handle this specific mux-result in the ISP. If we approach the problem like this, one particular inconsistency occurs. When writing in feeds with this approach, the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request, and then rewriting it, the whole log entry is put as the value of the key request or result and at demultiplexing stage appended bytewise to the corresponding feed.\\
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{simple_mux}
+    \caption{Log entry $v$ gets multiplexed in log entry $w$}
+    \label{fig:simplemux}
+\end{figure}
+
+Clearly seen is the full log entry $v$ of the Client-Server feed. By putting $v$ directly in the log entry $w$ of the ISP-Server feed no information gets lost or changed. This ensures integrity and replicates the feed exactly as it is: bytewise over the ISP to the server. 
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{full_mux}
     \caption{A full multiplexed RPC-request from client to server}
     \label{fig:fullmux}
 \end{figure}
-Clearly seen is the full log entry w of the Client-Server feed. By putting w directly in the log entry v of the ISP-Server feed no information gets lost or changed. This ensures integrity and replicates the feed exactly as it is: bytewise over the ISP to the server.
