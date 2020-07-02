@@ -500,12 +500,14 @@ def send_result(log_entry, result):
 
 def delete_e2e_feed(attributes):
     cpk = f'{attributes["public_key"]}_{server_config["name"]}'
-    sclient = s_client_dict[cpk]
+    try:
+        sclient = s_client_dict[cpk]
 
-    os.remove(sclient.E2E_c_s_log)
-    os.remove(sclient.E2E_s_c_log)
-    os.remove(sclient.E2E_s_c_key)
-
+        os.remove(sclient.E2E_c_s_log)
+        os.remove(sclient.E2E_s_c_log)
+        os.remove(sclient.E2E_s_c_key)
+    except:
+        logging.critical("DETRUCING FAILED")
     s_client_dict.pop(cpk)
 
 

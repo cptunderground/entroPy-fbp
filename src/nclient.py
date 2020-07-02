@@ -269,12 +269,15 @@ def delete_E2E_feed(spk):
     :param spk: server public key
     '''
     global c_server_dict
-    server = c_server_dict[spk]
+    try:
+        server = c_server_dict[spk]
 
-    os.remove(server.c_s_feed)
-    os.remove(server.c_s_key)
-    os.remove(server.s_c_feed)
-    c_server_dict.pop(spk)
+        os.remove(server.c_s_feed)
+        os.remove(server.c_s_key)
+        os.remove(server.s_c_feed)
+    except:
+        c_server_dict.pop(spk)
+        logging.warning("Detruce request failed.")
     logging.info(f'Connected Servers:{c_server_dict}')
 
 

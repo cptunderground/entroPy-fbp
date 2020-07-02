@@ -908,10 +908,12 @@ def read_introduce(log_entry, client: Client):
     try:
         server = server_dict[log_entry['attributes']['server']]
         c_pk = log_entry['attributes']['public_key']
+        c_pk = f'{c_pk}_{server.name}'
     except:
         invalid_server(log_entry, client)
+        return
 
-    c_pk = f'{c_pk}_{server.name}'
+
     #while c_pk in sub_client_dict.keys():
     #    c_pk = str(c_pk) + str(c_pk)
     # pass pk to server
