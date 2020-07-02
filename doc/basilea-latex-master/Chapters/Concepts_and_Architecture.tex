@@ -37,14 +37,14 @@ If you do not know your friend’s address, you do not know where to put that wi
 \section{Replicated Feeds}
 The following statements can be extracted from the Scuttlebutt Protocol Guide [\citenum{pubs}]: ”A feed is a signed append-only sequence of messages. Each identity has exactly one feed." and "Messages from feeds 3 hops out are replicated to help keep them available for others." - So what do these properties mean?\\
 
-What can be derived from this information? Signing ensures that you can trust that this message was created by one specific identity or more specifically, the encryption of plain text with the sender’s private key to a cipher text. The crypto text can be deciphered with the sender’s public key.\footnote{Wikipedia - \url{https://en.wikipedia.org/wiki/Public-key_cryptography - retrieved 27.06.2020}} Therefore, this guarantees integrity. Append-only means this sequence can not be forged. So there is no possible way to modify or delete any entries that were appended at any time [\citenum{ssbc}]. This append-only property is realized with a mechanism which references the previously generated message [\citenum{ssbc}]. The ID-centric architecture described means exactly one identity (key) is mapped to exactly one feed, where every single bit of information an identity creates in the SSB universe is stored in this feed [\citenum{ssbc}].
+What can be derived from this information? Signing ensures that you can trust that this message was created by one specific identity or more specifically, the encryption of plain text with the sender’s private key to a cipher text. The crypto text can be deciphered with the sender’s public key.\footnote{Wikipedia - \url{https://en.wikipedia.org/wiki/Public-key_cryptography} - retrieved 27.06.2020} Therefore, this guarantees integrity. Append-only means this sequence can not be forged. So there is no possible way to modify or delete any entries that were appended at any time [\citenum{ssbc}]. This append-only property is realized with a mechanism which references the previously generated message [\citenum{ssbc}]. The ID-centric architecture described means exactly one identity (key) is mapped to exactly one feed, where every single bit of information an identity creates in the SSB universe is stored in this feed [\citenum{ssbc}].
 \\
 There is a lot more going on in the SSB feed and protocol, but an adapted simplified version with three fields is more than sufficient for this thesis. 
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{feed_schema}
-    \caption{A schematic simplified feed with the fields meta, signature and content.}
+    \includegraphics[width=0.45\textwidth]{feed_schema}
+    \caption{A schematic of a simplified append-only feed with the fields meta, signature and content.}
     \label{fig:feed_schema}
 \end{figure}
 
@@ -53,11 +53,10 @@ These properties in figure \ref{fig:feed_schema} underline the trust by guarante
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{fbp_v0_1_Schema}
-    \caption{Feed-pair between client and ISP.}
+    \caption{Feed-pair between client and internet service provider (ISP).}
     \label{fig:contract_cli_isp}
 \end{figure}
-The replicator or the replication process has it first appearance. As a concept, there is some sort of replicator instance or procedure that replicates the feeds to the corresponding address or location. Let's take a closer look at the implementation part. \\
-Having this setup, the next step is to have a possibility to communicate, so the client can request information from the ISP’s real database.
+The replicator or the replication process has it first appearance. As a concept, there is some sort of replicator instance or procedure that replicates the feeds to the corresponding address or location, but more on this in the implementation part. Having this setup, the next step is to have a possibility to communicate, so the client can request information from the ISP’s real database.
 \enlargethispage{\baselineskip}
 \pagebreak
 \section{Remote Procedure Call}
@@ -72,16 +71,16 @@ The idea is to have a caller, in our case the client, and a callee, the ISP or s
 Recapping the tin can phone story: The idea of introducing is to get in touch with a new friend, to whom your best friend introduces you. You and your new friend create a new tin can phone. Since the cord is only long enough to reach your best friend, he connects you to your newly acquired friend. Therefore, the general idea of introducing in the context of the feed-bundling protocol, is onboarding to a new server over your ISP. This approach differs from the common publish and subscribe (pub-sub) architecture. Where the server has no choice to decline a client in the pub-sub model, this is the foundation of the introduce-detruce model, by simulating real, human behaviour. A more detailed description: A client writes an RPC-request for the introduce service of his ISP in the Client-ISP feed. This request needs an attribute which specifies the server which the client wants to be introduced to. The ISP invokes the introduce service with this given parameter, which now makes an RPC-request with information about the client and the fact that it wants to introduce itself to the server. By writing in the ISP-Server feed, the server detects the change and has the choice to either accept or decline the introduce inquiry. If the Server accepts the introduction, it will directly create the Server-Client feed which is replicated to the ISP. Afterwards, it sends a confirmation or acceptance back to the ISP to fulfill the request. 
 \\
 The server can also decline the introducing attempt, which results in a rejection, followed by no contract or some sort of empty contract. Either way, the ISP gets the result and fulfills the initial RPC request. The client now gets their result. Depending on the state of acceptance or rejection, the Client-Server feed, replicated to the ISP in accordance with the contract,is successfully established. If the client wants to use a service from server, it only writes the request in the corresponding feed and the procedure is the same as described in the RPC Section, whereby the feed is just simply forwarded over the ISP. 
-An important distinction: only the client can introduce itself. The server has no knowledge of clients and also no way to acquire knowledge of clients, so only the client can ask the server for a contract.
+An important distinction: Only the client can introduce itself. The server has no knowledge of clients and also no way to acquire knowledge of clients, so only the client can ask the server for a contract.
 
 \subsection{Detrucing}
 Detrucing as a newly invented word in this thesis, since normally after you introduce yourself to a person, there is no way to make this “un-happen”. It acts the same as an unfollow in a pub-sub domain or as terminating the contract. But contrary to the introduce procedure, both parties of the contract can detruce.
-Either the client or the server can send an RPC-request to the ISP service to detruce, which is propagated to the opposite end descibed above in the Introducing section and results in the termination of the whole contract. The result of this action is deleting keys and feeds. There is no way to decline a detruce service request. An important note: after detrucing from either side, the client can yet again introduce itself to the server and the server has the possibility to accept or decline the introduction again.
+Either the client or the server can send an RPC-request to the ISP service to detruce, which is propagated to the opposite end descibed above in the Introducing section and results in the termination of the whole contract. The result of this action is deleting keys and feeds. There is no way to decline a detruce service request. An important note: After detrucing from either side, the client can yet again introduce itself to the server and the server has the possibility to accept or decline the introduction again.
 A new diagram of the network can be derived using these descriptions.
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{intro_detru}
-    \caption{State after accepted introduce-request from Client to Server. Clearly seen the green End-to-End feed-pair is replicated over the mediating ISP.}
+    \caption{The network state after an accepted introduce-request from Client to Server. Clearly seen the green End-to-End feed-pair is replicated over the mediating ISP.}
     \label{fig:contract_cli_isp}
 \end{figure}
 
@@ -106,12 +105,12 @@ different. After a server accepts a client, the server generates the entire feed
 \subsection{Multiplexing and Demultiplexing}
 As far as the communication between a client and a server is concerned, requests from the client are transferred to the ISP the same way as before. Instead of just forwarding the updated feed, by replicating to the server, the ISP detects new log entries and multiplexes these into a new log entry.
 More specifically, the ISP generates a log entry signed by itself, containing the whole log entry signed by the client. This log entry is written to the ISP-Server feed and replicated. The server detects the change on the ISP-Server feed and takes this log entry. The multiplexed log entry, which belongs into a client-server feed, is extracted and appended to the Client-Server feed. This step is called demultiplexing. At this point, the situation is the same as before. A change in the Client-Server feed is given and the request is executed. The result is written to the Server-Client feed and not replicated again over the ISP directly to the client. From there, the whole story is repeated. The log entry is multiplexed once again in the Server-ISP feed and when it arrives at the ISP, it is demultiplexed and appended to the Server-Client feed. From there, it is replicated to the client and the client receives its result for the request.
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\textwidth]{loginlog}
-    \caption{A log entry inside another log entry.}
-    \label{fig:loginlog}
-\end{figure}
+%\begin{figure}
+%\centering
+%\includegraphics[width=0.9\textwidth]{loginlog}
+%    \caption{A log entry inside another log entry.}
+%    \label{fig:loginlog}
+%\end{figure}
 
 
 \section{Outlook}

@@ -2,28 +2,36 @@
 How a prototype implementation could be realised by applying the above outlined concepts and architectures will be discussed in this section. This implementation or more accurately, pseudo code, will give a broad overview of what can be derived translated from the concept into the software, by discussing the key elements. All these descriptions are so far known 'best practice', but do not tackle all software-architectural concerns of the FBP as long as the concept and consense is not violated.
 \section{Contracts}
 Implementing the contracts in a prototype implementation is significantly easier than it would be for a real-world application. As mentioned above, it consists of the knowledge of each other and where they are located.
-\begin{center}
-    \begin{tabular}{llll} \toprule
-        Client-Contract&value&ISP-contract&value\\ \midrule
-        actual public key:& cli001 &  actual public key: &isp001  \\ 
-        actual private key:& ****** & actual private key:& ****** \\
-        Client-ISP feed ID:& cli001\_isp001 &ISP-Client feed ID:&isp001\_cli001 \\ 
-        ISP public key&isp001&Client public key:&cli001\\
-        ISP-Client feed ID&isp001\_cli001&Client-ISP feed ID:&cli001\_isp001\\
-        ISP location:&131.152.158.21:5000 &Client location:& 131.152.211.12:5000 \\\bottomrule
-    \end{tabular}
-\end{center}
+\begin{figure}
+    
+    \begin{center}
+        \begin{tabular}{llll} \toprule
+            Client-Contract&value&ISP-contract&value\\ \midrule
+            actual public key:& cli001 &  actual public key: &isp001  \\ 
+            actual private key:& ****** & actual private key:& ****** \\
+            Client-ISP feed ID:& cli001\_isp001 &ISP-Client feed ID:&isp001\_cli001 \\ 
+            ISP public key&isp001&Client public key:&cli001\\
+            ISP-Client feed ID&isp001\_cli001&Client-ISP feed ID:&cli001\_isp001\\
+            ISP location:&131.152.158.21:5000 &Client location:& 131.152.211.12:5000 \\\bottomrule
+        \end{tabular}
+    \end{center}
+    \caption{The client's and the ISP's contract.}
+\end{figure}
 
 In this table we can see a basic contract with all the information needed. This contract can be broken down even more, since the feed-IDs are just appended public keys. In the public and private key fields a first abstraction to the real-world application is made, the public and private keys would most likely be some 256-bits long integer key pairs for example Curve25519 [\citenum{hankerson2006guide}]. This would result in a 64 digit long hexadecimal representation. The terms here act as simplification and easier distinguishable keys. Having this setup for example with a Curve25519 key pair, it is best practice to store them in a secrets or key file. Therefore the most basic contract can look like this:
 
-\begin{center}  
-    \begin{tabular}{llll} \toprule
-        Client-Contract&value&ISP-contract&value\\ \midrule
-        key file:& cli001.key &  key file: &isp001.key  \\ 
-        ISP public key&isp001&Client public key:&cli001\\
-        ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
-    \end{tabular}  
-\end{center}
+\begin{figure}
+    
+    \begin{center}  
+        \begin{tabular}{llll} \toprule
+            Client-Contract&value&ISP-contract&value\\ \midrule
+            key file:& cli001.key &  key file: &isp001.key  \\ 
+            ISP public key&isp001&Client public key:&cli001\\
+            ISP location:&.\slash isp001\slash &Client location:& .\slash cli001\slash \\\bottomrule
+        \end{tabular}  
+    \end{center}
+    \caption{A more simplified contract.}
+\end{figure}
 This even more simplified base, which runs on a localhost over the filesystem, can be stored in any suitable file type and the rest of the contract, such as the feed-IDs can be built by the program, if the rules are defined over the entire network. These contracts must be stored somewhere in the software, but the implementation can be freely chosen.
 
 \section{Replicated Feeds}
@@ -37,15 +45,14 @@ Having the contract and replicated feeds, the type of RPC-protocol has its turn.
 \section{Data Structure}
 A suitable data structure or format is a dictionary or a JSON-String, having keys that reference a field, as well as being serialisable. In this structure, an ID must be given to distinguish repeated reqests, as well as map the results to their request, a type has to be set to distinguish request and result, further the service to be called is needed as well as the attributes or the result of the call. This results in a minimal set of keys for request and result:\\
 
-
     \begin{python}
         \begin{lstlisting}
             request = {'ID':0, 'type':'request', 'service':'echo', 
-                       'attributes':['An echo']}
+            'attributes':['An echo']}
             result = {'ID':0, 'type':'result', 'result':'An echo'}
-            \end{lstlisting}
+        \end{lstlisting}
     \end{python}
-
+    
 
 
 
@@ -177,10 +184,11 @@ mux_result = {'ID':1, 'type':'mux',
 Again, the meta data describes how to handle this specific mux-result in the ISP. If we approach the problem like this, one particular inconsistency occurs. When writing in feeds with this approach, the signing process is violated and the integrity broken. Hence the replicated feed offers a solution for this. Instead of extracting the request, and then rewriting it, the whole log entry is put as the value of the key request or result and at demultiplexing stage appended bytewise to the corresponding feed.\\
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{simple_mux}
-    \caption{Log entry $v$ gets multiplexed in log entry $w$}
+    \includegraphics[width=0.7\textwidth]{simple_mux}
+    %\caption{Log entry $v$ gets multiplexed in log entry $w$}
     \label{fig:simplemux}
 \end{figure}
+
 
 Clearly seen is the full log entry $v$ of the Client-Server feed. By putting $v$ directly in the log entry $w$ of the ISP-Server feed no information gets lost or changed. This ensures integrity and replicates the feed exactly as it is: bytewise over the ISP to the server. 
 \begin{figure}
